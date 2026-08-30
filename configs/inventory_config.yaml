@@ -1,0 +1,26 @@
+# All financial values below are simulation assumptions, not retailer financial data.
+# The baseline and optimization settings are deliberately explicit.
+baseline_service_level: 0.80
+baseline_lead_time_days: 7
+baseline_review_period_days: 7
+
+default_service_level: 0.90
+default_lead_time_days: 7
+default_review_period_days: 7
+
+# Robust demand-estimation window for inventory policy calculations.
+# This is intentionally longer than the old 56-day window because M5 demand is highly intermittent.
+demand_window_days: 365
+
+# Minimum economically meaningful replenishment quantity. This is a simulation assumption.
+min_order_quantity: 5
+max_order_quantity: 500
+
+holding_cost_per_unit_day: 0.05
+ordering_cost_per_order: 5.0
+stockout_cost_per_unit: 2.0
+
+# Policy grid searched on validation data.
+service_levels: [0.80, 0.85, 0.90, 0.92, 0.95, 0.97]
+review_periods: [1, 3, 5, 7, 10, 14]
+lead_times: [1, 3, 5, 7, 10, 14, 21, 30]

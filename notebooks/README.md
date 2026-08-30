@@ -1,0 +1,1 @@
+The notebooks are analysis-first and intentionally contain explanatory code, plots, tables, diagnostics and interactive widgets. They reuse `src` for production logic but do not reduce the notebook to a single wrapper call.

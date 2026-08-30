@@ -1,0 +1,7 @@
+# Portfolio-scale local execution settings. The subset is deterministic and demand-ranked.
+max_items_per_store: 20
+max_total_series: 200
+selection_days: 365
+preferred_sales_file: sales_train_evaluation.csv
+fallback_sales_file: sales_train_validation.csv
+chunk_rows: 1000
