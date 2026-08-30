@@ -1,17 +1,51 @@
+
+=======
+# Python
 __pycache__/
-*.pyc
-.pytest_cache/
-.ipynb_checkpoints/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
 .venv/
 venv/
-.env
-data/raw/*
-data/interim/*
-data/processed/*
+env/
+ENV/
+*.egg-info/
 
-reports/generated/*
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs / temporary files
+*.log
+*.tmp
+*.temp
+
+# Raw M5 data - intentionally excluded because the files are very large
+data/raw/*
 !data/raw/.gitkeep
-!data/interim/.gitkeep
-!data/processed/.gitkeep
-!models/forecasting/.gitkeep
-!models/uncertainty/.gitkeep
+
+# Local caches
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Optional local exports
+*.zip
+
+# Streamlit local state
+.streamlit/secrets.toml
+>>>>>>> cad06c4ced55a5c5b4546a01f288c48adcf35c2f
