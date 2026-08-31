@@ -20,9 +20,13 @@ OPTIONS_PATH = (
 
 @router.get("/options")
 def options():
+    """Return available store/item combinations.
+
+    This endpoint intentionally uses the tiny JSON artifact instead
+    of loading the full forecast feature parquet into memory.
+    """
 
     if not OPTIONS_PATH.exists():
-
         raise HTTPException(
             status_code=500,
             detail=(
@@ -32,16 +36,13 @@ def options():
         )
 
     try:
-
         with OPTIONS_PATH.open(
             "r",
             encoding="utf-8",
-        ) as f:
+        ) as file:
+            return json.load(file)
 
-            return json.load(f)
-
-    except Exception as exc:
-
+    except (OSError, json.JSONDecodeError) as exc:
         raise HTTPException(
             status_code=500,
             detail=f"Options unavailable: {exc}",
