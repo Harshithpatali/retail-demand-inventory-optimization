@@ -165,57 +165,114 @@ def display_action(
 def business_metrics_to_dataframe(
     payload: dict[str, Any],
 ) -> pd.DataFrame:
-    """Convert several possible /business response formats to a table."""
+    """Convert the API business summary into a metric comparison table.
+
+    Expected API shape:
+
+        {
+            "available": true,
+            "metrics": {
+                "baseline": {
+                    "total_cost": ...,
+                    "holding_cost": ...,
+                    ...
+                },
+                "optimized": {
+                    "total_cost": ...,
+                    "holding_cost": ...,
+                    ...
+                }
+            }
+        }
+
+    Returns a table with:
+
+        metric | baseline | optimized | change_pct
+    """
 
     metrics = payload.get(
         "metrics",
-        [],
+        {},
+    )
+
+    if not isinstance(metrics, dict):
+        return pd.DataFrame()
+
+    baseline = metrics.get(
+        "baseline",
+        {},
+    )
+
+    optimized = metrics.get(
+        "optimized",
+        {},
+    )
+
+    if not isinstance(baseline, dict):
+        baseline = {}
+
+    if not isinstance(optimized, dict):
+        optimized = {}
+
+    metric_names = sorted(
+        set(baseline.keys())
+        | set(optimized.keys())
     )
 
     rows: list[dict[str, Any]] = []
 
-    # Format 1:
-    # {
-    #   "metrics": {
-    #       "total_cost": {
-    #           "baseline": 123,
-    #           "optimized": 100,
-    #           "change_pct": -18
-    #       }
-    #   }
-    # }
-    if isinstance(metrics, dict):
+    for metric_name in metric_names:
 
-        for metric_name, metric_value in metrics.items():
+        baseline_value = baseline.get(
+            metric_name
+        )
 
-            if isinstance(metric_value, dict):
+        optimized_value = optimized.get(
+            metric_name
+        )
 
-                row = {
-                    "metric": metric_name,
-                    **metric_value,
-                }
+        try:
+            baseline_numeric = float(
+                baseline_value
+            )
+        except (TypeError, ValueError):
+            baseline_numeric = None
 
-                rows.append(row)
+        try:
+            optimized_numeric = float(
+                optimized_value
+            )
+        except (TypeError, ValueError):
+            optimized_numeric = None
 
-    # Format 2:
-    # {
-    #   "metrics": [
-    #       {
-    #           "metric": "total_cost",
-    #           "baseline": 123,
-    #           "optimized": 100,
-    #           "change_pct": -18
-    #       }
-    #   ]
-    # }
-    elif isinstance(metrics, list):
+        if (
+            baseline_numeric is not None
+            and optimized_numeric is not None
+            and baseline_numeric != 0
+        ):
+            change_pct = (
+                (
+                    optimized_numeric
+                    - baseline_numeric
+                )
+                / baseline_numeric
+                * 100
+            )
+        else:
+            change_pct = None
 
-        for item in metrics:
+        rows.append(
+            {
+                "metric": metric_name,
+                "baseline": baseline_numeric,
+                "optimized": optimized_numeric,
+                "change_pct": change_pct,
+            }
+        )
 
-            if isinstance(item, dict):
-                rows.append(item)
-
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        rows
+    )
 
 
 def metric_value(
