@@ -1,0 +1,11 @@
+{
+  "selected_sales_rows": 388200,
+  "selected_series": 200,
+  "calendar_rows": 1969,
+  "calendar_missing_dates": 0,
+  "price_rows": 6841121,
+  "price_missing_sell_price": 0,
+  "duplicate_series": 388000,
+  "series_selection_rule": "Top 20 items per store by last 365 days demand, capped at 200 total series.",
+  "sales_source": "sales_train_evaluation.csv"
+}
