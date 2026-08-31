@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -19,17 +18,179 @@ st.set_page_config(
     page_title="Retail Demand & Inventory",
     page_icon="📦",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
 # -------------------------------------------------------------------
-# PAGE TITLE
+# GLOBAL STYLE
 # -------------------------------------------------------------------
 
-st.title("Retail Demand Forecasting & Inventory Optimization")
-st.caption(
-    "Forecast demand, evaluate inventory policies, and explore business impact."
-)
+CUSTOM_CSS = """
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    html, body, [class*="css"]  {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    :root {
+        --brand-primary: #1E3A8A;
+        --brand-primary-light: #3B5BDB;
+        --brand-accent: #0EA5A4;
+        --brand-bg: #F7F8FA;
+        --brand-surface: #FFFFFF;
+        --brand-border: #E5E7EB;
+        --brand-text: #111827;
+        --brand-muted: #6B7280;
+        --success: #15803D;
+        --success-bg: #ECFDF3;
+        --danger: #B91C1C;
+        --danger-bg: #FEF2F2;
+        --warning: #B45309;
+        --warning-bg: #FFFBEB;
+    }
+
+    .stApp {
+        background-color: var(--brand-bg);
+    }
+
+    /* ---- Top header banner ---- */
+    .app-header {
+        background: linear-gradient(120deg, var(--brand-primary) 0%, var(--brand-primary-light) 100%);
+        border-radius: 14px;
+        padding: 28px 32px;
+        margin-bottom: 20px;
+        color: white;
+        box-shadow: 0 4px 18px rgba(30, 58, 138, 0.18);
+    }
+    .app-header h1 {
+        color: white;
+        font-weight: 800;
+        font-size: 1.7rem;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.01em;
+    }
+    .app-header p {
+        color: rgba(255,255,255,0.85);
+        margin: 0;
+        font-size: 0.95rem;
+    }
+    .app-header .badge {
+        display: inline-block;
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.35);
+        color: white;
+        border-radius: 999px;
+        padding: 3px 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 10px;
+        letter-spacing: 0.02em;
+    }
+
+    /* ---- Section headers ---- */
+    h2, h3 {
+        color: var(--brand-text) !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.01em;
+    }
+    .section-caption {
+        color: var(--brand-muted);
+        font-size: 0.92rem;
+        margin-top: -8px;
+        margin-bottom: 12px;
+    }
+
+    /* ---- Cards ---- */
+    .metric-card, div[data-testid="stMetric"] {
+        background: var(--brand-surface);
+        border: 1px solid var(--brand-border);
+        border-radius: 12px;
+        padding: 16px 18px 12px 18px;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+    }
+    div[data-testid="stMetricLabel"] {
+        color: var(--brand-muted);
+        font-weight: 600;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    div[data-testid="stMetricValue"] {
+        color: var(--brand-text);
+        font-weight: 700;
+    }
+
+    /* ---- Recommendation banners ---- */
+    .rec-banner {
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-weight: 700;
+        font-size: 1.05rem;
+        text-align: center;
+        border: 1px solid transparent;
+        margin-bottom: 6px;
+    }
+    .rec-reorder {
+        background: var(--danger-bg);
+        color: var(--danger);
+        border-color: #FCA5A5;
+    }
+    .rec-hold {
+        background: var(--success-bg);
+        color: var(--success);
+        border-color: #86EFAC;
+    }
+    .rec-other {
+        background: var(--warning-bg);
+        color: var(--warning);
+        border-color: #FDE68A;
+    }
+
+    /* ---- Dataframe / table polish ---- */
+    div[data-testid="stDataFrame"] {
+        border: 1px solid var(--brand-border);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    /* ---- Sidebar ---- */
+    section[data-testid="stSidebar"] {
+        background-color: #14213D;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #E5E7EB !important;
+    }
+    section[data-testid="stSidebar"] .stSelectbox label,
+    section[data-testid="stSidebar"] .stSlider label,
+    section[data-testid="stSidebar"] .stRadio label {
+        color: #CBD5E1 !important;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    section[data-testid="stSidebar"] hr {
+        border-color: rgba(255,255,255,0.12);
+    }
+
+    /* ---- Divider spacing ---- */
+    hr {
+        margin: 1.4rem 0;
+    }
+
+    /* ---- Footer ---- */
+    .app-footer {
+        margin-top: 40px;
+        padding-top: 16px;
+        border-top: 1px solid var(--brand-border);
+        color: var(--brand-muted);
+        font-size: 0.8rem;
+        text-align: center;
+    }
+</style>
+"""
+
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 # -------------------------------------------------------------------
@@ -40,8 +201,8 @@ def api_error_message() -> None:
     """Display a consistent API-unavailable message."""
 
     st.error(
-        "API unavailable. Start FastAPI with:\n\n"
-        "uvicorn api.main:app --reload"
+        "**API unavailable.** Start the backend with:\n\n"
+        "```\nuvicorn api.main:app --reload\n```"
     )
 
 
@@ -142,24 +303,35 @@ def format_percent(
 def display_action(
     action: str,
 ) -> None:
-    """Display inventory recommendation prominently."""
+    """Display inventory recommendation prominently, styled."""
 
     normalized = str(action).upper()
 
     if normalized == "REORDER":
-        st.error(
-            "🔴 REORDER"
+        st.markdown(
+            '<div class="rec-banner rec-reorder">🔴 REORDER</div>',
+            unsafe_allow_html=True,
         )
 
     elif normalized == "HOLD":
-        st.success(
-            "🟢 HOLD"
+        st.markdown(
+            '<div class="rec-banner rec-hold">🟢 HOLD</div>',
+            unsafe_allow_html=True,
         )
 
     else:
-        st.warning(
-            f"Recommendation: {normalized}"
+        st.markdown(
+            f'<div class="rec-banner rec-other">Recommendation: {normalized}</div>',
+            unsafe_allow_html=True,
         )
+
+
+def section_intro(title: str, caption: str | None = None) -> None:
+    """Consistent section header with optional caption."""
+
+    st.header(title)
+    if caption:
+        st.markdown(f'<p class="section-caption">{caption}</p>', unsafe_allow_html=True)
 
 
 def business_metrics_to_dataframe(
@@ -308,6 +480,22 @@ def metric_value(
 
 
 # -------------------------------------------------------------------
+# HEADER
+# -------------------------------------------------------------------
+
+st.markdown(
+    """
+    <div class="app-header">
+        <h1>📦 Retail Demand Forecasting &amp; Inventory Optimization</h1>
+        <p>Forecast demand, evaluate inventory policies, and quantify business impact across your store &amp; item portfolio.</p>
+        <span class="badge">LIVE · CONNECTED TO API</span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# -------------------------------------------------------------------
 # LOAD AVAILABLE STORE / ITEM OPTIONS
 # -------------------------------------------------------------------
 
@@ -368,9 +556,7 @@ pairs["item_id"] = (
 # SIDEBAR
 # -------------------------------------------------------------------
 
-st.sidebar.header(
-    "Controls"
-)
+st.sidebar.markdown("### 📦 Navigator")
 
 stores = sorted(
     pairs["store_id"]
@@ -397,6 +583,7 @@ item = st.sidebar.selectbox(
     items,
 )
 
+st.sidebar.divider()
 
 page = st.sidebar.radio(
     "Page",
@@ -409,6 +596,8 @@ page = st.sidebar.radio(
     ],
 )
 
+st.sidebar.divider()
+st.sidebar.markdown("### ⚙️ Policy Parameters")
 
 service_level = st.sidebar.slider(
     "Service level",
@@ -431,15 +620,11 @@ lead_time = st.sidebar.slider(
 st.sidebar.divider()
 
 st.sidebar.caption(
-    f"API: {API_BASE_URL}"
+    f"**API:** {API_BASE_URL}"
 )
 
 st.sidebar.caption(
-    f"Store: {store}"
-)
-
-st.sidebar.caption(
-    f"Item: {item}"
+    f"**Store:** {store}  \n**Item:** {item}"
 )
 
 
@@ -449,12 +634,9 @@ st.sidebar.caption(
 
 if page == "Executive Overview":
 
-    st.header(
-        "Executive Overview"
-    )
-
-    st.write(
-        "Portfolio-level summary of the forecasting and inventory results."
+    section_intro(
+        "Executive Overview",
+        "Portfolio-level summary of the forecasting and inventory results.",
     )
 
     payload = get_json(
@@ -551,6 +733,7 @@ if page == "Executive Overview":
                 and total_cost_optimized is not None
                 else None
             ),
+            delta_color="inverse",
         )
 
     with col3:
@@ -604,7 +787,8 @@ if page == "Executive Overview":
         )
 
         st.bar_chart(
-            chart_df
+            chart_df,
+            color=["#94A3B8", "#1E3A8A"],
         )
 
     # Full metrics table.
@@ -625,8 +809,9 @@ if page == "Executive Overview":
 
 elif page == "Demand Forecast":
 
-    st.header(
-        "Demand Forecast"
+    section_intro(
+        "Demand Forecast",
+        "Model-generated forecast with prediction interval for the selected store and item.",
     )
 
     horizon = st.slider(
@@ -760,8 +945,9 @@ elif page == "Demand Forecast":
 
 elif page == "Inventory Recommendation":
 
-    st.header(
-        "Inventory Recommendation"
+    section_intro(
+        "Inventory Recommendation",
+        "Recommended inventory policy based on the selected service level and lead time.",
     )
 
     current_inventory = st.number_input(
@@ -789,11 +975,6 @@ elif page == "Inventory Recommendation":
 
     st.subheader(
         f"{store} × {item}"
-    )
-
-    st.write(
-        "Recommended inventory policy based on "
-        "the selected service level and lead time."
     )
 
     # Recommendation banner.
@@ -981,8 +1162,9 @@ elif page == "Inventory Recommendation":
 
 elif page == "Business Impact":
 
-    st.header(
-        "Business Impact"
+    section_intro(
+        "Business Impact",
+        "Baseline vs. optimized policy comparison across cost, inventory, and service metrics.",
     )
 
     payload = get_json(
@@ -1082,6 +1264,7 @@ elif page == "Business Impact":
                 and total_cost_optimized is not None
                 else None
             ),
+            delta_color="inverse",
         )
 
     with c2:
@@ -1096,6 +1279,7 @@ elif page == "Business Impact":
                 and holding_optimized is not None
                 else None
             ),
+            delta_color="inverse",
         )
 
     with c3:
@@ -1110,6 +1294,7 @@ elif page == "Business Impact":
                 and stockout_optimized is not None
                 else None
             ),
+            delta_color="inverse",
         )
 
     with c4:
@@ -1161,7 +1346,8 @@ elif page == "Business Impact":
         )
 
         st.bar_chart(
-            cost_chart
+            cost_chart,
+            color=["#94A3B8", "#1E3A8A"],
         )
 
     # Inventory metrics.
@@ -1198,7 +1384,8 @@ elif page == "Business Impact":
         )
 
         st.bar_chart(
-            inventory_chart
+            inventory_chart,
+            color=["#94A3B8", "#0EA5A4"],
         )
 
     st.subheader(
@@ -1241,8 +1428,9 @@ elif page == "Business Impact":
 
 elif page == "Scenario Analysis":
 
-    st.header(
-        "Scenario Analysis"
+    section_intro(
+        "Scenario Analysis",
+        "Stress-test the inventory policy against a hypothetical demand growth shock.",
     )
 
     growth = st.slider(
@@ -1558,10 +1746,24 @@ elif page == "Scenario Analysis":
     )
 
     st.bar_chart(
-        rop_chart
+        rop_chart,
+        color=["#1E3A8A"],
     )
 
     st.caption(
         f"Scenario demand growth: {scenario.get('scenario_demand_growth', growth):+.0%}"
     )
 
+
+# -------------------------------------------------------------------
+# FOOTER
+# -------------------------------------------------------------------
+
+st.markdown(
+    f"""
+    <div class="app-footer">
+        Retail Demand Forecasting &amp; Inventory Optimization · Connected to {API_BASE_URL}
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
