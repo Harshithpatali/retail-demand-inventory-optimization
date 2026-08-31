@@ -194,19 +194,19 @@ The dashboard uses the FastAPI backend through `API_BASE_URL`; it does not train
 
 #### Executive Overview
 
-![Executive Overview](docs/screenshots/executive_overview.png)
+![Executive Overview](docs/screenshots/UI.png)
 
 #### Business Impact
 
-![Business Impact](docs/screenshots/business_impact.png)
+![Business Impact](docs/screenshots/UI_2.png)
 
 #### Inventory Recommendation
 
-![Inventory Recommendation](docs/screenshots/inventory_recommendation.png)
+![Inventory Recommendation](docs/screenshots/UI_3.png)
 
 #### Scenario Analysis
 
-![Scenario Analysis](docs/screenshots/scenario_analysis.png)
+![Scenario Analysis](docs/screenshots/UI_4.png)
 
 > The screenshot files should be stored in `docs/screenshots/` using the filenames shown above.
 
