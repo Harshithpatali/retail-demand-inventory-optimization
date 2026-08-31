@@ -1,0 +1,804 @@
+{
+  "options": [
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_2_019"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_2_197"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_064"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_080"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_099"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_120"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_252"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_282"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_295"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_499"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_501"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_511"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_555"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_681"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_739"
+    },
+    {
+      "store_id": "CA_1",
+      "item_id": "FOODS_3_741"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_1_012"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_1_218"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_080"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_120"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_252"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_282"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_288"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_319"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_362"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_389"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_499"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_541"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_555"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_635"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_739"
+    },
+    {
+      "store_id": "CA_2",
+      "item_id": "FOODS_3_804"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_120"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_202"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_252"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_282"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_288"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_362"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_499"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_555"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_681"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_723"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_739"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "FOODS_3_808"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "HOBBIES_1_234"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "HOUSEHOLD_1_118"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "HOUSEHOLD_1_459"
+    },
+    {
+      "store_id": "CA_3",
+      "item_id": "HOUSEHOLD_1_465"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_1_032"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_1_085"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_1_099"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_1_218"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_2_197"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_099"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_202"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_252"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_282"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_458"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_491"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_681"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "FOODS_3_723"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "HOBBIES_1_048"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "HOBBIES_1_268"
+    },
+    {
+      "store_id": "CA_4",
+      "item_id": "HOBBIES_1_371"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_1_218"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_2_181"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_086"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_202"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_226"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_252"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_377"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_389"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_499"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_555"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_607"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_681"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_694"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "FOODS_3_723"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "HOUSEHOLD_1_334"
+    },
+    {
+      "store_id": "TX_1",
+      "item_id": "HOUSEHOLD_1_459"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_1_218"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_080"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_120"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_202"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_226"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_252"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_377"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_389"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_499"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_555"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_607"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_694"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_723"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_804"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "FOODS_3_811"
+    },
+    {
+      "store_id": "TX_2",
+      "item_id": "HOUSEHOLD_1_334"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_1_096"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_1_218"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_030"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_120"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_202"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_252"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_376"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_377"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_555"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_681"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_694"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_723"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "FOODS_3_804"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "HOBBIES_1_158"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "HOBBIES_1_354"
+    },
+    {
+      "store_id": "TX_3",
+      "item_id": "HOUSEHOLD_1_521"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_1_032"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_1_085"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_1_096"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_1_204"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_042"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_080"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_099"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_120"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_202"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_226"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_282"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_324"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_491"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_668"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_694"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_702"
+    },
+    {
+      "store_id": "WI_1",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_1_096"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_2_326"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_2_360"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_007"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_070"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_226"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_234"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_282"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_376"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_462"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_498"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_694"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_711"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_723"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_752"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "FOODS_3_811"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "HOUSEHOLD_1_110"
+    },
+    {
+      "store_id": "WI_2",
+      "item_id": "HOUSEHOLD_1_459"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_086"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_090"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_109"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_120"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_202"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_226"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_234"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_252"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_282"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_318"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_376"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_498"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_555"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_586"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_587"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_681"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_694"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_714"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_723"
+    },
+    {
+      "store_id": "WI_3",
+      "item_id": "FOODS_3_811"
+    }
+  ]
+}

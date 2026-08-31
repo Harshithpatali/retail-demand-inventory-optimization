@@ -1,8 +1,36 @@
-import numpy as np
+from __future__ import annotations
 
-def normal_interval(forecast, residual_std: float, z: float = 1.96):
-    forecast = np.asarray(forecast, dtype=float)
-    margin = z * float(residual_std)
-    lower = np.clip(forecast - margin, 0, None)
-    upper = forecast + margin
+from typing import Iterable
+
+
+def normal_interval(
+    forecast: Iterable[float],
+    residual_std: float,
+    z: float = 1.96,
+):
+    margin = (
+        z
+        * float(residual_std)
+    )
+
+    lower = []
+    upper = []
+
+    for value in forecast:
+
+        prediction = float(
+            value
+        )
+
+        lower.append(
+            max(
+                0.0,
+                prediction - margin,
+            )
+        )
+
+        upper.append(
+            prediction + margin
+        )
+
     return lower, upper

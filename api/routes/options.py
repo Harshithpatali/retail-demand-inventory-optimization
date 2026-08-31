@@ -1,9 +1,48 @@
+from __future__ import annotations
+
+import json
+
 from fastapi import APIRouter, HTTPException
-from api.services.artifacts import ArtifactStore
-router=APIRouter()
+
+from src.utils.config import ROOT
+
+
+router = APIRouter()
+
+
+OPTIONS_PATH = (
+    ROOT
+    / "data"
+    / "processed"
+    / "series_options.json"
+)
+
+
 @router.get("/options")
 def options():
+
+    if not OPTIONS_PATH.exists():
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Deployment artifact missing: "
+                "data/processed/series_options.json"
+            ),
+        )
+
     try:
-        df=ArtifactStore().load_data(); pairs=df[["store_id","item_id"]].astype(str).drop_duplicates().sort_values(["store_id","item_id"]).to_dict("records"); return {"options":pairs}
-    except (FileNotFoundError,ValueError) as exc: raise HTTPException(status_code=400,detail=str(exc))
-    except Exception: raise HTTPException(status_code=500,detail="Options unavailable due to an internal error.")
+
+        with OPTIONS_PATH.open(
+            "r",
+            encoding="utf-8",
+        ) as f:
+
+            return json.load(f)
+
+    except Exception as exc:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Options unavailable: {exc}",
+        ) from exc
