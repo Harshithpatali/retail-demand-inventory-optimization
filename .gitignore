@@ -1,51 +1,18 @@
+# Raw M5 source data
+data/raw/*
+!data/raw/.gitkeep
 
-=======
 # Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
 .venv/
 venv/
-env/
-ENV/
-*.egg-info/
+__pycache__/
+*.py[cod]
 
 # Jupyter
 .ipynb_checkpoints/
 
-# OS / IDE
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Environment / secrets
+# Secrets
 .env
-.env.*
-!.env.example
 
-# Logs / temporary files
-*.log
-*.tmp
-*.temp
-
-# Raw M5 data - intentionally excluded because the files are very large
-data/raw/*
-!data/raw/.gitkeep
-
-# Local caches
-.cache/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Optional local exports
+# Archives
 *.zip
-
-# Streamlit local state
-.streamlit/secrets.toml
->>>>>>> cad06c4ced55a5c5b4546a01f288c48adcf35c2f
