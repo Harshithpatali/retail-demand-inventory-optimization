@@ -1,12 +1,17 @@
+
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 import httpx
-import pandas as pd
 import streamlit as st
 
+
+# =====================================================================
+# CONFIGURATION
+# =====================================================================
 
 API_BASE_URL = os.getenv(
     "API_BASE_URL",
@@ -22,16 +27,25 @@ st.set_page_config(
 )
 
 
-# -------------------------------------------------------------------
+# =====================================================================
 # GLOBAL STYLE
-# -------------------------------------------------------------------
+# =====================================================================
 
 CUSTOM_CSS = """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    html, body, [class*="css"]  {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    @import url(
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
+    );
+
+    html,
+    body,
+    [class*="css"] {
+        font-family:
+            'Inter',
+            -apple-system,
+            BlinkMacSystemFont,
+            sans-serif;
     }
 
     :root {
@@ -43,248 +57,500 @@ CUSTOM_CSS = """
         --brand-border: #E5E7EB;
         --brand-text: #111827;
         --brand-muted: #6B7280;
+
         --success: #15803D;
         --success-bg: #ECFDF3;
+
         --danger: #B91C1C;
         --danger-bg: #FEF2F2;
+
         --warning: #B45309;
         --warning-bg: #FFFBEB;
     }
+
+
+    /* ================================================================
+       APP
+       ================================================================ */
 
     .stApp {
         background-color: var(--brand-bg);
     }
 
-    /* ---- Top header banner ---- */
+
+    /* ================================================================
+       HEADER
+       ================================================================ */
+
     .app-header {
-        background: linear-gradient(120deg, var(--brand-primary) 0%, var(--brand-primary-light) 100%);
+        background:
+            linear-gradient(
+                120deg,
+                var(--brand-primary) 0%,
+                var(--brand-primary-light) 100%
+            );
+
         border-radius: 14px;
+
         padding: 28px 32px;
+
         margin-bottom: 20px;
+
         color: white;
-        box-shadow: 0 4px 18px rgba(30, 58, 138, 0.18);
+
+        box-shadow:
+            0 4px 18px
+            rgba(30, 58, 138, 0.18);
     }
+
+
     .app-header h1 {
         color: white;
+
         font-weight: 800;
+
         font-size: 1.7rem;
-        margin: 0 0 4px 0;
-        letter-spacing: -0.01em;
+
+        margin:
+            0 0 4px 0;
+
+        letter-spacing:
+            -0.01em;
     }
+
+
     .app-header p {
-        color: rgba(255,255,255,0.85);
-        margin: 0;
-        font-size: 0.95rem;
+        color:
+            rgba(255, 255, 255, 0.85);
+
+        margin:
+            0;
+
+        font-size:
+            0.95rem;
     }
+
+
     .app-header .badge {
-        display: inline-block;
-        background: rgba(255,255,255,0.15);
-        border: 1px solid rgba(255,255,255,0.35);
-        color: white;
-        border-radius: 999px;
-        padding: 3px 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-top: 10px;
-        letter-spacing: 0.02em;
+        display:
+            inline-block;
+
+        background:
+            rgba(255,255,255,0.15);
+
+        border:
+            1px solid
+            rgba(255,255,255,0.35);
+
+        color:
+            white;
+
+        border-radius:
+            999px;
+
+        padding:
+            3px 12px;
+
+        font-size:
+            0.75rem;
+
+        font-weight:
+            600;
+
+        margin-top:
+            10px;
+
+        letter-spacing:
+            0.02em;
     }
 
-    /* ---- Section headers ---- */
-    h2, h3 {
-        color: var(--brand-text) !important;
-        font-weight: 700 !important;
-        letter-spacing: -0.01em;
+
+    /* ================================================================
+       HEADINGS
+       ================================================================ */
+
+    h2,
+    h3 {
+        color:
+            var(--brand-text)
+            !important;
+
+        font-weight:
+            700
+            !important;
+
+        letter-spacing:
+            -0.01em;
     }
+
+
     .section-caption {
-        color: var(--brand-muted);
-        font-size: 0.92rem;
-        margin-top: -8px;
-        margin-bottom: 12px;
+        color:
+            var(--brand-muted);
+
+        font-size:
+            0.92rem;
+
+        margin-top:
+            -8px;
+
+        margin-bottom:
+            12px;
     }
 
-    /* ---- Cards ---- */
-    .metric-card, div[data-testid="stMetric"] {
-        background: var(--brand-surface);
-        border: 1px solid var(--brand-border);
-        border-radius: 12px;
-        padding: 16px 18px 12px 18px;
-        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+
+    /* ================================================================
+       METRIC CARDS
+       ================================================================ */
+
+    div[data-testid="stMetric"] {
+        background:
+            var(--brand-surface);
+
+        border:
+            1px solid
+            var(--brand-border);
+
+        border-radius:
+            12px;
+
+        padding:
+            16px 18px 12px 18px;
+
+        box-shadow:
+            0 1px 3px
+            rgba(16, 24, 40, 0.04);
     }
+
+
     div[data-testid="stMetricLabel"] {
-        color: var(--brand-muted);
-        font-weight: 600;
-        font-size: 0.82rem;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
+        color:
+            var(--brand-muted);
+
+        font-weight:
+            600;
+
+        font-size:
+            0.82rem;
+
+        text-transform:
+            uppercase;
+
+        letter-spacing:
+            0.03em;
     }
+
+
     div[data-testid="stMetricValue"] {
-        color: var(--brand-text);
-        font-weight: 700;
+        color:
+            var(--brand-text);
+
+        font-weight:
+            700;
     }
 
-    /* ---- Recommendation banners ---- */
+
+    /* ================================================================
+       RECOMMENDATION BANNERS
+       ================================================================ */
+
     .rec-banner {
-        border-radius: 12px;
-        padding: 14px 18px;
-        font-weight: 700;
-        font-size: 1.05rem;
-        text-align: center;
-        border: 1px solid transparent;
-        margin-bottom: 6px;
+        border-radius:
+            12px;
+
+        padding:
+            14px 18px;
+
+        font-weight:
+            700;
+
+        font-size:
+            1.05rem;
+
+        text-align:
+            center;
+
+        border:
+            1px solid
+            transparent;
+
+        margin-bottom:
+            6px;
     }
+
+
     .rec-reorder {
-        background: var(--danger-bg);
-        color: var(--danger);
-        border-color: #FCA5A5;
+        background:
+            var(--danger-bg);
+
+        color:
+            var(--danger);
+
+        border-color:
+            #FCA5A5;
     }
+
+
     .rec-hold {
-        background: var(--success-bg);
-        color: var(--success);
-        border-color: #86EFAC;
+        background:
+            var(--success-bg);
+
+        color:
+            var(--success);
+
+        border-color:
+            #86EFAC;
     }
+
+
     .rec-other {
-        background: var(--warning-bg);
-        color: var(--warning);
-        border-color: #FDE68A;
+        background:
+            var(--warning-bg);
+
+        color:
+            var(--warning);
+
+        border-color:
+            #FDE68A;
     }
 
-    /* ---- Dataframe / table polish ---- */
-    div[data-testid="stDataFrame"] {
-        border: 1px solid var(--brand-border);
-        border-radius: 10px;
-        overflow: hidden;
-    }
 
-    /* ---- Sidebar ---- */
+    /* ================================================================
+       SIDEBAR
+       ================================================================ */
+
     section[data-testid="stSidebar"] {
-        background-color: #14213D;
+        background-color:
+            #14213D;
     }
+
+
     section[data-testid="stSidebar"] * {
-        color: #E5E7EB !important;
+        color:
+            #E5E7EB !important;
     }
-    section[data-testid="stSidebar"] .stSelectbox label,
-    section[data-testid="stSidebar"] .stSlider label,
-    section[data-testid="stSidebar"] .stRadio label {
-        color: #CBD5E1 !important;
-        font-weight: 600;
-        font-size: 0.85rem;
+
+
+    section[data-testid="stSidebar"]
+    .stSelectbox label,
+
+    section[data-testid="stSidebar"]
+    .stSlider label,
+
+    section[data-testid="stSidebar"]
+    .stRadio label {
+        color:
+            #CBD5E1 !important;
+
+        font-weight:
+            600;
+
+        font-size:
+            0.85rem;
     }
+
+
     section[data-testid="stSidebar"] hr {
-        border-color: rgba(255,255,255,0.12);
+        border-color:
+            rgba(255,255,255,0.12);
     }
 
-    /* ---- Divider spacing ---- */
-    hr {
-        margin: 1.4rem 0;
+
+    /* ================================================================
+       TABLES
+       ================================================================ */
+
+    div[data-testid="stTable"] {
+        border:
+            1px solid
+            var(--brand-border);
+
+        border-radius:
+            10px;
+
+        overflow:
+            hidden;
     }
 
-    /* ---- Footer ---- */
+
+    /* ================================================================
+       FOOTER
+       ================================================================ */
+
     .app-footer {
-        margin-top: 40px;
-        padding-top: 16px;
-        border-top: 1px solid var(--brand-border);
-        color: var(--brand-muted);
-        font-size: 0.8rem;
-        text-align: center;
+        margin-top:
+            40px;
+
+        padding-top:
+            16px;
+
+        border-top:
+            1px solid
+            var(--brand-border);
+
+        color:
+            var(--brand-muted);
+
+        font-size:
+            0.8rem;
+
+        text-align:
+            center;
     }
+
 </style>
 """
 
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+st.markdown(
+    CUSTOM_CSS,
+    unsafe_allow_html=True,
+)
 
 
-# -------------------------------------------------------------------
-# HELPERS
-# -------------------------------------------------------------------
+# =====================================================================
+# API HELPERS
+# =====================================================================
 
 def api_error_message() -> None:
-    """Display a consistent API-unavailable message."""
+    """Display a production-friendly API error."""
 
     st.error(
-        "**API unavailable.** Start the backend with:\n\n"
-        "```\nuvicorn api.main:app --reload\n```"
+        "The backend is temporarily unavailable."
+    )
+
+    st.caption(
+        f"Backend: {API_BASE_URL}"
+    )
+
+    st.caption(
+        "Please retry in a few seconds."
     )
 
 
-def get_json(
+def request_json(
+    method: str,
     endpoint: str,
-    timeout: float = 10.0,
+    payload: dict[str, Any] | None = None,
+    timeout: float = 20.0,
+    retries: int = 3,
 ) -> dict[str, Any] | None:
-    """Perform a GET request and return parsed JSON."""
+    """Make a resilient API request with retry support."""
 
-    try:
-        response = httpx.get(
-            f"{API_BASE_URL}{endpoint}",
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        return response.json()
+    url = (
+        f"{API_BASE_URL}{endpoint}"
+    )
 
-    except httpx.HTTPError as exc:
-        st.error(
-            f"API request failed: {exc}"
-        )
-        return None
+    last_error: Exception | None = None
 
-    except ValueError:
-        st.error(
-            "API returned an invalid JSON response."
-        )
-        return None
+    for attempt in range(
+        retries
+    ):
 
-
-def post_json(
-    endpoint: str,
-    payload: dict[str, Any],
-    timeout: float = 30.0,
-) -> dict[str, Any] | None:
-    """Perform a POST request with a JSON body."""
-
-    try:
-        response = httpx.post(
-            f"{API_BASE_URL}{endpoint}",
-            json=payload,
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        return response.json()
-
-    except httpx.HTTPStatusError as exc:
         try:
-            detail = exc.response.json().get(
-                "detail",
-                str(exc),
-            )
-        except Exception:
-            detail = str(exc)
 
-        st.error(
-            f"API request failed: {detail}"
-        )
-        return None
+            if method.upper() == "GET":
 
-    except httpx.HTTPError as exc:
-        st.error(
-            f"API request failed: {exc}"
-        )
-        return None
+                response = httpx.get(
+                    url,
+                    timeout=timeout,
+                )
 
-    except ValueError:
-        st.error(
-            "API returned an invalid JSON response."
-        )
-        return None
+            else:
 
+                response = httpx.post(
+                    url,
+                    json=payload or {},
+                    timeout=timeout,
+                )
+
+            response.raise_for_status()
+
+            result = response.json()
+
+            if not isinstance(
+                result,
+                dict,
+            ):
+                raise ValueError(
+                    "API returned an unexpected response format."
+                )
+
+            return result
+
+        except Exception as exc:
+
+            last_error = exc
+
+            if attempt < retries - 1:
+
+                time.sleep(
+                    1.0
+                    * (attempt + 1)
+                )
+
+    st.error(
+        f"API request failed: {last_error}"
+    )
+
+    return None
+
+
+# =====================================================================
+# CACHED API CALLS
+# =====================================================================
+
+@st.cache_data(
+    ttl=300,
+    show_spinner=False,
+)
+def load_options() -> dict[str, Any] | None:
+    """Cache store/item options for five minutes."""
+
+    return request_json(
+        "GET",
+        "/options",
+        timeout=15,
+        retries=3,
+    )
+
+
+@st.cache_data(
+    ttl=300,
+    show_spinner=False,
+)
+def load_business() -> dict[str, Any] | None:
+    """Cache business metrics for five minutes."""
+
+    return request_json(
+        "GET",
+        "/business",
+        timeout=15,
+        retries=3,
+    )
+
+
+# =====================================================================
+# FORMATTING HELPERS
+# =====================================================================
 
 def format_number(
     value: Any,
     decimals: int = 2,
 ) -> str:
-    """Format numeric values for dashboard display."""
+    """Format a numeric value."""
 
     try:
-        return f"{float(value):,.{decimals}f}"
-    except (TypeError, ValueError):
+
+        return (
+            f"{float(value):,.{decimals}f}"
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
         return "—"
 
 
@@ -292,219 +558,210 @@ def format_percent(
     value: Any,
     decimals: int = 2,
 ) -> str:
-    """Format a fraction such as 0.9442 as 94.42%."""
+    """Format a fraction as a percentage."""
 
     try:
-        return f"{float(value) * 100:.{decimals}f}%"
-    except (TypeError, ValueError):
+
+        return (
+            f"{float(value) * 100:.{decimals}f}%"
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
         return "—"
 
 
-def display_action(
-    action: str,
-) -> None:
-    """Display inventory recommendation prominently, styled."""
+def percent_change(
+    old: Any,
+    new: Any,
+) -> str | None:
+    """Calculate relative percentage change."""
 
-    normalized = str(action).upper()
+    try:
+
+        old_value = float(old)
+        new_value = float(new)
+
+        if old_value == 0:
+            return None
+
+        change = (
+            (
+                new_value
+                - old_value
+            )
+            / old_value
+            * 100
+        )
+
+        return (
+            f"{change:+.2f}%"
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        return None
+
+
+def percentage_point_change(
+    old: Any,
+    new: Any,
+) -> str | None:
+    """Calculate percentage-point change."""
+
+    try:
+
+        change = (
+            (
+                float(new)
+                - float(old)
+            )
+            * 100
+        )
+
+        return (
+            f"{change:+.2f} pp"
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        return None
+
+
+def get_business_metric(
+    metrics: dict[str, Any],
+    section: str,
+    metric: str,
+) -> Any:
+    """Retrieve baseline or optimized business metric."""
+
+    block = metrics.get(
+        section,
+        {},
+    )
+
+    if not isinstance(
+        block,
+        dict,
+    ):
+        return None
+
+    return block.get(
+        metric
+    )
+
+
+def display_action(
+    action: Any,
+) -> None:
+    """Display inventory recommendation."""
+
+    normalized = str(
+        action
+        if action is not None
+        else "UNKNOWN"
+    ).upper()
 
     if normalized == "REORDER":
+
         st.markdown(
-            '<div class="rec-banner rec-reorder">🔴 REORDER</div>',
+            """
+            <div class="rec-banner rec-reorder">
+                🔴 REORDER
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
     elif normalized == "HOLD":
+
         st.markdown(
-            '<div class="rec-banner rec-hold">🟢 HOLD</div>',
+            """
+            <div class="rec-banner rec-hold">
+                🟢 HOLD
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
     else:
+
         st.markdown(
-            f'<div class="rec-banner rec-other">Recommendation: {normalized}</div>',
+            f"""
+            <div class="rec-banner rec-other">
+                Recommendation: {normalized}
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
 
-def section_intro(title: str, caption: str | None = None) -> None:
-    """Consistent section header with optional caption."""
+def section_intro(
+    title: str,
+    caption: str | None = None,
+) -> None:
+    """Render a consistent section heading."""
 
     st.header(title)
+
     if caption:
-        st.markdown(f'<p class="section-caption">{caption}</p>', unsafe_allow_html=True)
 
-
-def business_metrics_to_dataframe(
-    payload: dict[str, Any],
-) -> pd.DataFrame:
-    """Convert the API business summary into a metric comparison table.
-
-    Expected API shape:
-
-        {
-            "available": true,
-            "metrics": {
-                "baseline": {
-                    "total_cost": ...,
-                    "holding_cost": ...,
-                    ...
-                },
-                "optimized": {
-                    "total_cost": ...,
-                    "holding_cost": ...,
-                    ...
-                }
-            }
-        }
-
-    Returns a table with:
-
-        metric | baseline | optimized | change_pct
-    """
-
-    metrics = payload.get(
-        "metrics",
-        {},
-    )
-
-    if not isinstance(metrics, dict):
-        return pd.DataFrame()
-
-    baseline = metrics.get(
-        "baseline",
-        {},
-    )
-
-    optimized = metrics.get(
-        "optimized",
-        {},
-    )
-
-    if not isinstance(baseline, dict):
-        baseline = {}
-
-    if not isinstance(optimized, dict):
-        optimized = {}
-
-    metric_names = sorted(
-        set(baseline.keys())
-        | set(optimized.keys())
-    )
-
-    rows: list[dict[str, Any]] = []
-
-    for metric_name in metric_names:
-
-        baseline_value = baseline.get(
-            metric_name
+        st.markdown(
+            f"""
+            <p class="section-caption">
+                {caption}
+            </p>
+            """,
+            unsafe_allow_html=True,
         )
 
-        optimized_value = optimized.get(
-            metric_name
-        )
 
-        try:
-            baseline_numeric = float(
-                baseline_value
-            )
-        except (TypeError, ValueError):
-            baseline_numeric = None
-
-        try:
-            optimized_numeric = float(
-                optimized_value
-            )
-        except (TypeError, ValueError):
-            optimized_numeric = None
-
-        if (
-            baseline_numeric is not None
-            and optimized_numeric is not None
-            and baseline_numeric != 0
-        ):
-            change_pct = (
-                (
-                    optimized_numeric
-                    - baseline_numeric
-                )
-                / baseline_numeric
-                * 100
-            )
-        else:
-            change_pct = None
-
-        rows.append(
-            {
-                "metric": metric_name,
-                "baseline": baseline_numeric,
-                "optimized": optimized_numeric,
-                "change_pct": change_pct,
-            }
-        )
-
-    return pd.DataFrame(
-        rows
-    )
-
-
-def metric_value(
-    df: pd.DataFrame,
-    metric_name: str,
-    column: str,
-) -> float | None:
-    """Safely retrieve one business metric."""
-
-    if df.empty:
-        return None
-
-    if "metric" not in df.columns:
-        return None
-
-    matches = df[
-        df["metric"].astype(str)
-        == metric_name
-    ]
-
-    if matches.empty:
-        return None
-
-    if column not in matches.columns:
-        return None
-
-    try:
-        return float(
-            matches.iloc[0][column]
-        )
-    except (TypeError, ValueError):
-        return None
-
-
-# -------------------------------------------------------------------
-# HEADER
-# -------------------------------------------------------------------
+# =====================================================================
+# APPLICATION HEADER
+# =====================================================================
 
 st.markdown(
     """
     <div class="app-header">
-        <h1>📦 Retail Demand Forecasting &amp; Inventory Optimization</h1>
-        <p>Forecast demand, evaluate inventory policies, and quantify business impact across your store &amp; item portfolio.</p>
-        <span class="badge">LIVE · CONNECTED TO API</span>
+
+        <h1>
+            📦 Retail Demand Forecasting &amp;
+            Inventory Optimization
+        </h1>
+
+        <p>
+            Forecast demand, evaluate inventory policies,
+            and quantify business impact across your store
+            &amp; item portfolio.
+        </p>
+
+        <span class="badge">
+            LIVE · CONNECTED TO API
+        </span>
+
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 
-# -------------------------------------------------------------------
-# LOAD AVAILABLE STORE / ITEM OPTIONS
-# -------------------------------------------------------------------
+# =====================================================================
+# OPTIONS
+# =====================================================================
 
-options_payload = get_json(
-    "/options",
-    timeout=10,
-)
+options_payload = load_options()
 
 if options_payload is None:
+
     api_error_message()
     st.stop()
 
@@ -514,54 +771,46 @@ options = options_payload.get(
     [],
 )
 
-if not options:
+if not isinstance(
+    options,
+    list,
+) or not options:
+
     st.warning(
-        "No store/item options available. "
-        "Run the data and feature pipeline first."
+        "No store/item options are currently available."
     )
+
     st.stop()
 
 
-pairs = pd.DataFrame(
-    options
-)
-
-required_option_columns = {
-    "store_id",
-    "item_id",
-}
-
-if not required_option_columns.issubset(
-    pairs.columns
-):
-    st.error(
-        "The /options endpoint did not return "
-        "store_id and item_id."
-    )
-    st.stop()
-
-
-pairs["store_id"] = (
-    pairs["store_id"]
-    .astype(str)
-)
-
-pairs["item_id"] = (
-    pairs["item_id"]
-    .astype(str)
-)
-
-
-# -------------------------------------------------------------------
-# SIDEBAR
-# -------------------------------------------------------------------
-
-st.sidebar.markdown("### 📦 Navigator")
-
+# Native Python sets instead of pandas.
 stores = sorted(
-    pairs["store_id"]
-    .unique()
+    {
+        str(row.get("store_id"))
+        for row in options
+        if isinstance(row, dict)
+        and row.get("store_id") is not None
+    }
 )
+
+
+if not stores:
+
+    st.error(
+        "The API did not return valid store IDs."
+    )
+
+    st.stop()
+
+
+# =====================================================================
+# SIDEBAR
+# =====================================================================
+
+st.sidebar.markdown(
+    "### 📦 Navigator"
+)
+
 
 store = st.sidebar.selectbox(
     "Store ID",
@@ -570,20 +819,30 @@ store = st.sidebar.selectbox(
 
 
 items = sorted(
-    pairs.loc[
-        pairs["store_id"] == store,
-        "item_id",
-    ]
-    .astype(str)
-    .unique()
+    {
+        str(row.get("item_id"))
+        for row in options
+        if isinstance(row, dict)
+        and str(row.get("store_id")) == store
+        and row.get("item_id") is not None
+    }
 )
+
+
+if not items:
+
+    st.error(
+        "No items are available for the selected store."
+    )
+
+    st.stop()
+
 
 item = st.sidebar.selectbox(
     "Item ID",
     items,
 )
 
-st.sidebar.divider()
 
 page = st.sidebar.radio(
     "Page",
@@ -596,8 +855,13 @@ page = st.sidebar.radio(
     ],
 )
 
+
 st.sidebar.divider()
-st.sidebar.markdown("### ⚙️ Policy Parameters")
+
+st.sidebar.markdown(
+    "### ⚙️ Policy Parameters"
+)
+
 
 service_level = st.sidebar.slider(
     "Service level",
@@ -624,188 +888,442 @@ st.sidebar.caption(
 )
 
 st.sidebar.caption(
-    f"**Store:** {store}  \n**Item:** {item}"
+    f"**Store:** {store}"
+)
+
+st.sidebar.caption(
+    f"**Item:** {item}"
 )
 
 
-# -------------------------------------------------------------------
+# =====================================================================
 # EXECUTIVE OVERVIEW
-# -------------------------------------------------------------------
+# =====================================================================
 
 if page == "Executive Overview":
 
     section_intro(
         "Executive Overview",
-        "Portfolio-level summary of the forecasting and inventory results.",
+        "Portfolio-level summary of forecasting and inventory optimization performance.",
     )
 
-    payload = get_json(
-        "/business",
-        timeout=10,
-    )
+    payload = load_business()
 
     if payload is None:
+
         api_error_message()
         st.stop()
+
 
     if not payload.get(
         "available",
         False,
     ):
+
         st.info(
             payload.get(
                 "notes",
                 "Business-impact artifacts are unavailable.",
             )
         )
+
         st.stop()
 
-    metrics_df = business_metrics_to_dataframe(
-        payload
+
+    metrics = payload.get(
+        "metrics",
+        {},
     )
 
-    if metrics_df.empty:
+    if not isinstance(
+        metrics,
+        dict,
+    ):
+
         st.warning(
-            "Business metrics are available, "
-            "but no structured metrics were returned."
+            "Business metrics have an unexpected format."
         )
+
         st.stop()
 
-    # Key KPI values.
-    total_cost_baseline = metric_value(
-        metrics_df,
+
+    baseline_total = get_business_metric(
+        metrics,
+        "baseline",
         "total_cost",
-        "baseline",
     )
 
-    total_cost_optimized = metric_value(
-        metrics_df,
+    optimized_total = get_business_metric(
+        metrics,
+        "optimized",
         "total_cost",
-        "optimized",
     )
 
-    service_baseline = metric_value(
-        metrics_df,
-        "service_level",
+    baseline_service = get_business_metric(
+        metrics,
         "baseline",
-    )
-
-    service_optimized = metric_value(
-        metrics_df,
         "service_level",
-        "optimized",
     )
 
-    inventory_baseline = metric_value(
-        metrics_df,
-        "average_inventory",
+    optimized_service = get_business_metric(
+        metrics,
+        "optimized",
+        "service_level",
+    )
+
+    baseline_inventory = get_business_metric(
+        metrics,
         "baseline",
-    )
-
-    inventory_optimized = metric_value(
-        metrics_df,
         "average_inventory",
-        "optimized",
     )
 
-    # KPI cards.
-    col1, col2, col3, col4 = st.columns(
+    optimized_inventory = get_business_metric(
+        metrics,
+        "optimized",
+        "average_inventory",
+    )
+
+
+    c1, c2, c3, c4 = st.columns(
         4
     )
 
-    with col1:
+
+    with c1:
+
         st.metric(
             "Baseline Total Cost",
             format_number(
-                total_cost_baseline
+                baseline_total
             ),
         )
 
-    with col2:
+
+    with c2:
+
         st.metric(
             "Optimized Total Cost",
             format_number(
-                total_cost_optimized
+                optimized_total
             ),
-            (
-                f"{((total_cost_optimized - total_cost_baseline) / total_cost_baseline) * 100:+.2f}%"
-                if total_cost_baseline not in (None, 0)
-                and total_cost_optimized is not None
-                else None
+            percent_change(
+                baseline_total,
+                optimized_total,
             ),
             delta_color="inverse",
         )
 
-    with col3:
+
+    with c3:
+
         st.metric(
             "Optimized Service Level",
             format_percent(
-                service_optimized
+                optimized_service
+            ),
+            percentage_point_change(
+                baseline_service,
+                optimized_service,
             ),
         )
 
-    with col4:
+
+    with c4:
+
         st.metric(
-            "Optimized Avg Inventory",
+            "Average Inventory",
             format_number(
-                inventory_optimized
+                optimized_inventory
             ),
+            percent_change(
+                baseline_inventory,
+                optimized_inventory,
+            ),
+            delta_color="inverse",
         )
+
 
     st.divider()
 
-    # Cost comparison.
-    cost_metrics = [
-        "total_cost",
-        "holding_cost",
-        "ordering_cost",
-        "stockout_cost",
-    ]
 
-    cost_rows = metrics_df[
-        metrics_df["metric"].isin(
-            cost_metrics
-        )
-    ].copy()
-
-    if not cost_rows.empty:
-
-        chart_df = cost_rows[
-            [
-                "metric",
-                "baseline",
-                "optimized",
-            ]
-        ].copy()
-
-        chart_df = chart_df.set_index(
-            "metric"
-        )
-
-        st.subheader(
-            "Cost Comparison"
-        )
-
-        st.bar_chart(
-            chart_df,
-            color=["#94A3B8", "#1E3A8A"],
-        )
-
-    # Full metrics table.
     st.subheader(
-        "Business Metrics"
-    )
-
-    st.dataframe(
-        metrics_df,
-        use_container_width=True,
-        hide_index=True,
+        "Business Impact"
     )
 
 
-# -------------------------------------------------------------------
+    # Four headline cards requested for executive view.
+    h1, h2, h3, h4 = st.columns(
+        4
+    )
+
+
+    with h1:
+
+        st.metric(
+            "Total Cost",
+            format_number(
+                optimized_total
+            ),
+            percent_change(
+                baseline_total,
+                optimized_total,
+            ),
+            delta_color="inverse",
+        )
+
+
+    with h2:
+
+        holding_baseline = get_business_metric(
+            metrics,
+            "baseline",
+            "holding_cost",
+        )
+
+        holding_optimized = get_business_metric(
+            metrics,
+            "optimized",
+            "holding_cost",
+        )
+
+        st.metric(
+            "Holding Cost",
+            format_number(
+                holding_optimized
+            ),
+            percent_change(
+                holding_baseline,
+                holding_optimized,
+            ),
+            delta_color="inverse",
+        )
+
+
+    with h3:
+
+        stockout_baseline = get_business_metric(
+            metrics,
+            "baseline",
+            "stockout_cost",
+        )
+
+        stockout_optimized = get_business_metric(
+            metrics,
+            "optimized",
+            "stockout_cost",
+        )
+
+        st.metric(
+            "Stockout Cost",
+            format_number(
+                stockout_optimized
+            ),
+            percent_change(
+                stockout_baseline,
+                stockout_optimized,
+            ),
+            delta_color="inverse",
+        )
+
+
+    with h4:
+
+        st.metric(
+            "Service Level",
+            format_percent(
+                optimized_service
+            ),
+            percentage_point_change(
+                baseline_service,
+                optimized_service,
+            ),
+        )
+
+
+    st.divider()
+
+
+    # Cost chart using native dictionaries.
+    st.subheader(
+        "Cost Comparison"
+    )
+
+
+    cost_chart = {
+
+        "Baseline": {
+
+            "Total Cost": float(
+                baseline_total or 0
+            ),
+
+            "Holding Cost": float(
+                holding_baseline or 0
+            ),
+
+            "Ordering Cost": float(
+                get_business_metric(
+                    metrics,
+                    "baseline",
+                    "ordering_cost",
+                )
+                or 0
+            ),
+
+            "Stockout Cost": float(
+                stockout_baseline or 0
+            ),
+        },
+
+        "Optimized": {
+
+            "Total Cost": float(
+                optimized_total or 0
+            ),
+
+            "Holding Cost": float(
+                holding_optimized or 0
+            ),
+
+            "Ordering Cost": float(
+                get_business_metric(
+                    metrics,
+                    "optimized",
+                    "ordering_cost",
+                )
+                or 0
+            ),
+
+            "Stockout Cost": float(
+                stockout_optimized or 0
+            ),
+        },
+    }
+
+
+    # Convert only the small chart structure into the
+    # dictionary format Streamlit can consume.
+    st.bar_chart(
+        {
+            category: {
+                group: values[group]
+                for group in values
+            }
+            for category, values in cost_chart.items()
+            for group in values
+        }
+    )
+
+
+    st.subheader(
+        "Detailed Business Metrics"
+    )
+
+
+    business_rows = []
+
+    all_metrics = set()
+
+    for block_name in [
+        "baseline",
+        "optimized",
+    ]:
+
+        block = metrics.get(
+            block_name,
+            {},
+        )
+
+        if isinstance(
+            block,
+            dict,
+        ):
+
+            all_metrics.update(
+                block.keys()
+            )
+
+
+    for metric_name in sorted(
+        all_metrics
+    ):
+
+        base_value = get_business_metric(
+            metrics,
+            "baseline",
+            metric_name,
+        )
+
+        opt_value = get_business_metric(
+            metrics,
+            "optimized",
+            metric_name,
+        )
+
+
+        if metric_name in {
+            "service_level",
+            "fill_rate",
+        }:
+
+            change = percentage_point_change(
+                base_value,
+                opt_value,
+            )
+
+        else:
+
+            change = percent_change(
+                base_value,
+                opt_value,
+            )
+
+
+        business_rows.append(
+            [
+                metric_name.replace(
+                    "_",
+                    " ",
+                ).title(),
+
+                format_number(
+                    base_value
+                ),
+
+                format_number(
+                    opt_value
+                ),
+
+                change or "—",
+            ]
+        )
+
+
+    st.table(
+        {
+            "Metric": [
+                row[0]
+                for row in business_rows
+            ],
+            "Baseline": [
+                row[1]
+                for row in business_rows
+            ],
+            "Optimized": [
+                row[2]
+                for row in business_rows
+            ],
+            "Change": [
+                row[3]
+                for row in business_rows
+            ],
+        }
+    )
+
+
+# =====================================================================
 # DEMAND FORECAST
-# -------------------------------------------------------------------
+# =====================================================================
 
 elif page == "Demand Forecast":
 
@@ -813,6 +1331,7 @@ elif page == "Demand Forecast":
         "Demand Forecast",
         "Model-generated forecast with prediction interval for the selected store and item.",
     )
+
 
     horizon = st.slider(
         "Forecast horizon",
@@ -822,7 +1341,9 @@ elif page == "Demand Forecast":
         step=1,
     )
 
-    payload = post_json(
+
+    payload = request_json(
+        "POST",
         "/forecast",
         {
             "store_id": store,
@@ -830,59 +1351,59 @@ elif page == "Demand Forecast":
             "horizon_days": horizon,
         },
         timeout=30,
+        retries=3,
     )
 
+
     if payload is None:
+
         api_error_message()
         st.stop()
+
 
     forecasts = payload.get(
         "forecasts",
         [],
     )
 
-    if not forecasts:
+
+    if not isinstance(
+        forecasts,
+        list,
+    ) or not forecasts:
+
         st.warning(
             "No forecasts were returned."
         )
+
         st.stop()
 
-    forecast_df = pd.DataFrame(
-        forecasts
-    )
-
-    if "date" not in forecast_df.columns:
-        st.error(
-            "Forecast response does not contain dates."
-        )
-        st.stop()
-
-    forecast_df["date"] = pd.to_datetime(
-        forecast_df["date"]
-    )
-
-    forecast_df = forecast_df.sort_values(
-        "date"
-    )
 
     st.subheader(
         f"{store} × {item}"
     )
 
-    model_col, uncertainty_col = st.columns(
+
+    c1, c2 = st.columns(
         2
     )
 
-    with model_col:
+
+    with c1:
+
         st.metric(
             "Forecast Model",
-            payload.get(
-                "model_name",
-                "Unknown",
+            str(
+                payload.get(
+                    "model_name",
+                    "Unknown",
+                )
             ),
         )
 
-    with uncertainty_col:
+
+    with c2:
+
         st.metric(
             "Residual Std",
             format_number(
@@ -893,62 +1414,143 @@ elif page == "Demand Forecast":
             ),
         )
 
+
     st.subheader(
         "Forecast with Prediction Interval"
     )
 
-    chart_columns = [
-        column
-        for column in [
-            "forecast",
-            "lower",
-            "upper",
-        ]
-        if column in forecast_df.columns
-    ]
 
-    if chart_columns:
-        st.line_chart(
-            forecast_df.set_index(
-                "date"
-            )[chart_columns]
+    # Create a compact chart dictionary.
+    chart_rows = {}
+
+    for row in forecasts:
+
+        if not isinstance(
+            row,
+            dict,
+        ):
+            continue
+
+        date = str(
+            row.get(
+                "date",
+                "",
+            )
         )
+
+        if not date:
+            continue
+
+        chart_rows[date] = {
+
+            "Forecast": float(
+                row.get(
+                    "forecast",
+                    0,
+                )
+                or 0
+            ),
+
+            "Lower": float(
+                row.get(
+                    "lower",
+                    0,
+                )
+                or 0
+            ),
+
+            "Upper": float(
+                row.get(
+                    "upper",
+                    0,
+                )
+                or 0
+            ),
+        }
+
+
+    if chart_rows:
+
+        st.line_chart(
+            chart_rows
+        )
+
 
     st.subheader(
         "Forecast Table"
     )
 
-    display_forecast = forecast_df.copy()
 
-    for column in [
-        "forecast",
-        "lower",
-        "upper",
-    ]:
-        if column in display_forecast.columns:
-            display_forecast[column] = (
-                display_forecast[column]
-                .astype(float)
-                .round(2)
+    forecast_table = {
+
+        "Date": [],
+
+        "Forecast": [],
+
+        "Lower": [],
+
+        "Upper": [],
+    }
+
+
+    for row in forecasts:
+
+        if not isinstance(
+            row,
+            dict,
+        ):
+            continue
+
+        forecast_table["Date"].append(
+            str(
+                row.get(
+                    "date",
+                    "",
+                )
             )
+        )
 
-    st.dataframe(
-        display_forecast,
-        use_container_width=True,
-        hide_index=True,
+        forecast_table["Forecast"].append(
+            format_number(
+                row.get(
+                    "forecast"
+                )
+            )
+        )
+
+        forecast_table["Lower"].append(
+            format_number(
+                row.get(
+                    "lower"
+                )
+            )
+        )
+
+        forecast_table["Upper"].append(
+            format_number(
+                row.get(
+                    "upper"
+                )
+            )
+        )
+
+
+    st.table(
+        forecast_table
     )
 
 
-# -------------------------------------------------------------------
+# =====================================================================
 # INVENTORY RECOMMENDATION
-# -------------------------------------------------------------------
+# =====================================================================
 
 elif page == "Inventory Recommendation":
 
     section_intro(
         "Inventory Recommendation",
-        "Recommended inventory policy based on the selected service level and lead time.",
+        "Recommended inventory policy based on service level, demand uncertainty, and lead time.",
     )
+
 
     current_inventory = st.number_input(
         "Current inventory",
@@ -957,7 +1559,9 @@ elif page == "Inventory Recommendation":
         step=1.0,
     )
 
-    payload = post_json(
+
+    payload = request_json(
+        "POST",
         "/inventory",
         {
             "store_id": store,
@@ -967,25 +1571,32 @@ elif page == "Inventory Recommendation":
             "current_inventory": current_inventory,
         },
         timeout=30,
+        retries=3,
     )
 
+
     if payload is None:
+
         api_error_message()
         st.stop()
+
 
     st.subheader(
         f"{store} × {item}"
     )
 
-    # Recommendation banner.
+
     action_col, service_col, lead_col = st.columns(
         3
     )
 
+
     with action_col:
+
         st.write(
             "**Recommended Action**"
         )
+
         display_action(
             payload.get(
                 "recommended_action",
@@ -993,7 +1604,9 @@ elif page == "Inventory Recommendation":
             )
         )
 
+
     with service_col:
+
         st.metric(
             "Service Level",
             format_percent(
@@ -1003,20 +1616,25 @@ elif page == "Inventory Recommendation":
             ),
         )
 
+
     with lead_col:
+
         st.metric(
             "Lead Time",
             f"{payload.get('lead_time_days', lead_time)} days",
         )
 
+
     st.divider()
 
-    # Main inventory metrics.
-    col1, col2, col3, col4 = st.columns(
+
+    c1, c2, c3, c4 = st.columns(
         4
     )
 
-    with col1:
+
+    with c1:
+
         st.metric(
             "Mean Daily Demand",
             format_number(
@@ -1026,7 +1644,9 @@ elif page == "Inventory Recommendation":
             ),
         )
 
-    with col2:
+
+    with c2:
+
         st.metric(
             "Lead-Time Demand",
             format_number(
@@ -1036,7 +1656,9 @@ elif page == "Inventory Recommendation":
             ),
         )
 
-    with col3:
+
+    with c3:
+
         st.metric(
             "Safety Stock",
             format_number(
@@ -1046,7 +1668,9 @@ elif page == "Inventory Recommendation":
             ),
         )
 
-    with col4:
+
+    with c4:
+
         st.metric(
             "Reorder Point",
             format_number(
@@ -1056,11 +1680,14 @@ elif page == "Inventory Recommendation":
             ),
         )
 
-    col5, col6, col7 = st.columns(
+
+    c5, c6, c7 = st.columns(
         3
     )
 
-    with col5:
+
+    with c5:
+
         st.metric(
             "Order Quantity",
             format_number(
@@ -1070,7 +1697,9 @@ elif page == "Inventory Recommendation":
             ),
         )
 
-    with col6:
+
+    with c6:
+
         st.metric(
             "Current Inventory",
             format_number(
@@ -1080,7 +1709,9 @@ elif page == "Inventory Recommendation":
             ),
         )
 
-    with col7:
+
+    with c7:
+
         st.metric(
             "Demand Std",
             format_number(
@@ -1091,347 +1722,491 @@ elif page == "Inventory Recommendation":
             ),
         )
 
+
     st.divider()
 
-    # Inventory policy table.
-    inventory_rows = pd.DataFrame(
-        [
-            {
-                "Metric": "Mean daily demand",
-                "Value": payload.get(
-                    "mean_daily_demand"
-                ),
-            },
-            {
-                "Metric": "Lead-time demand",
-                "Value": payload.get(
-                    "lead_time_demand"
-                ),
-            },
-            {
-                "Metric": "Demand standard deviation",
-                "Value": payload.get(
-                    "demand_std"
-                ),
-            },
-            {
-                "Metric": "Safety stock",
-                "Value": payload.get(
-                    "safety_stock"
-                ),
-            },
-            {
-                "Metric": "Reorder point",
-                "Value": payload.get(
-                    "reorder_point"
-                ),
-            },
-            {
-                "Metric": "Order quantity",
-                "Value": payload.get(
-                    "order_quantity"
-                ),
-            },
-        ]
-    )
-
-    inventory_rows["Value"] = (
-        inventory_rows["Value"]
-        .astype(float)
-        .round(3)
-    )
 
     st.subheader(
         "Inventory Policy Details"
     )
 
-    st.dataframe(
-        inventory_rows,
-        use_container_width=True,
-        hide_index=True,
+
+    inventory_table = {
+
+        "Metric": [
+            "Mean daily demand",
+            "Lead-time demand",
+            "Demand standard deviation",
+            "Safety stock",
+            "Reorder point",
+            "Order quantity",
+        ],
+
+        "Value": [
+            format_number(
+                payload.get(
+                    "mean_daily_demand"
+                )
+            ),
+
+            format_number(
+                payload.get(
+                    "lead_time_demand"
+                )
+            ),
+
+            format_number(
+                payload.get(
+                    "demand_std"
+                ),
+                3,
+            ),
+
+            format_number(
+                payload.get(
+                    "safety_stock"
+                )
+            ),
+
+            format_number(
+                payload.get(
+                    "reorder_point"
+                )
+            ),
+
+            format_number(
+                payload.get(
+                    "order_quantity"
+                )
+            ),
+        ],
+    }
+
+
+    st.table(
+        inventory_table
     )
+
 
     st.caption(
         f"Model: {payload.get('model_name', 'Unknown')}"
     )
 
 
-# -------------------------------------------------------------------
+# =====================================================================
 # BUSINESS IMPACT
-# -------------------------------------------------------------------
+# =====================================================================
 
 elif page == "Business Impact":
 
     section_intro(
         "Business Impact",
-        "Baseline vs. optimized policy comparison across cost, inventory, and service metrics.",
+        "Baseline versus optimized inventory-policy performance.",
     )
 
-    payload = get_json(
-        "/business",
-        timeout=10,
-    )
+
+    payload = load_business()
+
 
     if payload is None:
+
         api_error_message()
         st.stop()
+
 
     if not payload.get(
         "available",
         False,
     ):
+
         st.info(
             payload.get(
                 "notes",
                 "Business-impact artifacts are unavailable.",
             )
         )
+
         st.stop()
 
-    metrics_df = business_metrics_to_dataframe(
-        payload
+
+    metrics = payload.get(
+        "metrics",
+        {},
     )
 
-    if metrics_df.empty:
+
+    if not isinstance(
+        metrics,
+        dict,
+    ):
+
         st.warning(
-            "No business metrics were returned."
+            "No structured business metrics were returned."
         )
+
         st.stop()
 
-    # Key metrics.
-    total_cost_baseline = metric_value(
-        metrics_df,
+
+    baseline_total = get_business_metric(
+        metrics,
+        "baseline",
         "total_cost",
-        "baseline",
     )
 
-    total_cost_optimized = metric_value(
-        metrics_df,
+    optimized_total = get_business_metric(
+        metrics,
+        "optimized",
         "total_cost",
-        "optimized",
     )
 
-    holding_baseline = metric_value(
-        metrics_df,
+    baseline_holding = get_business_metric(
+        metrics,
+        "baseline",
         "holding_cost",
-        "baseline",
     )
 
-    holding_optimized = metric_value(
-        metrics_df,
+    optimized_holding = get_business_metric(
+        metrics,
+        "optimized",
         "holding_cost",
-        "optimized",
     )
 
-    stockout_baseline = metric_value(
-        metrics_df,
-        "stockout_cost",
+    baseline_stockout = get_business_metric(
+        metrics,
         "baseline",
-    )
-
-    stockout_optimized = metric_value(
-        metrics_df,
         "stockout_cost",
-        "optimized",
     )
 
-    service_baseline = metric_value(
-        metrics_df,
-        "service_level",
+    optimized_stockout = get_business_metric(
+        metrics,
+        "optimized",
+        "stockout_cost",
+    )
+
+    baseline_service = get_business_metric(
+        metrics,
         "baseline",
-    )
-
-    service_optimized = metric_value(
-        metrics_df,
         "service_level",
-        "optimized",
     )
 
-    # KPI cards.
+    optimized_service = get_business_metric(
+        metrics,
+        "optimized",
+        "service_level",
+    )
+
+
     c1, c2, c3, c4 = st.columns(
         4
     )
 
+
     with c1:
+
         st.metric(
             "Total Cost",
             format_number(
-                total_cost_optimized
+                optimized_total
             ),
-            (
-                f"{((total_cost_optimized - total_cost_baseline) / total_cost_baseline) * 100:+.2f}%"
-                if total_cost_baseline not in (None, 0)
-                and total_cost_optimized is not None
-                else None
+            percent_change(
+                baseline_total,
+                optimized_total,
             ),
             delta_color="inverse",
         )
 
+
     with c2:
+
         st.metric(
             "Holding Cost",
             format_number(
-                holding_optimized
+                optimized_holding
             ),
-            (
-                f"{((holding_optimized - holding_baseline) / holding_baseline) * 100:+.2f}%"
-                if holding_baseline not in (None, 0)
-                and holding_optimized is not None
-                else None
+            percent_change(
+                baseline_holding,
+                optimized_holding,
             ),
             delta_color="inverse",
         )
 
+
     with c3:
+
         st.metric(
             "Stockout Cost",
             format_number(
-                stockout_optimized
+                optimized_stockout
             ),
-            (
-                f"{((stockout_optimized - stockout_baseline) / stockout_baseline) * 100:+.2f}%"
-                if stockout_baseline not in (None, 0)
-                and stockout_optimized is not None
-                else None
+            percent_change(
+                baseline_stockout,
+                optimized_stockout,
             ),
             delta_color="inverse",
         )
 
+
     with c4:
+
         st.metric(
             "Service Level",
             format_percent(
-                service_optimized
+                optimized_service
             ),
-            (
-                f"{(service_optimized - service_baseline) * 100:+.2f} pp"
-                if service_baseline is not None
-                and service_optimized is not None
-                else None
+            percentage_point_change(
+                baseline_service,
+                optimized_service,
             ),
         )
+
 
     st.divider()
 
-    # Total cost chart.
-    cost_names = [
-        "total_cost",
-        "holding_cost",
-        "ordering_cost",
-        "stockout_cost",
-    ]
 
-    cost_df = metrics_df[
-        metrics_df["metric"].isin(
-            cost_names
-        )
-    ].copy()
+    st.subheader(
+        "Cost Comparison"
+    )
 
-    if not cost_df.empty:
 
-        st.subheader(
-            "Cost Comparison"
-        )
+    # Native list structure for chart data.
+    cost_chart = {
 
-        cost_chart = cost_df[
-            [
-                "metric",
-                "baseline",
-                "optimized",
-            ]
-        ].copy()
+        "Baseline": [
+            float(
+                baseline_total or 0
+            ),
 
-        cost_chart = cost_chart.set_index(
-            "metric"
-        )
+            float(
+                baseline_holding or 0
+            ),
 
-        st.bar_chart(
-            cost_chart,
-            color=["#94A3B8", "#1E3A8A"],
-        )
+            float(
+                get_business_metric(
+                    metrics,
+                    "baseline",
+                    "ordering_cost",
+                )
+                or 0
+            ),
 
-    # Inventory metrics.
-    inventory_names = [
-        "average_inventory",
-        "max_inventory",
-        "stockout_units",
-        "stockout_days",
-        "orders",
-    ]
+            float(
+                baseline_stockout or 0
+            ),
+        ],
 
-    inventory_df = metrics_df[
-        metrics_df["metric"].isin(
-            inventory_names
-        )
-    ].copy()
+        "Optimized": [
+            float(
+                optimized_total or 0
+            ),
 
-    if not inventory_df.empty:
+            float(
+                optimized_holding or 0
+            ),
 
-        st.subheader(
-            "Inventory and Service Comparison"
-        )
+            float(
+                get_business_metric(
+                    metrics,
+                    "optimized",
+                    "ordering_cost",
+                )
+                or 0
+            ),
 
-        inventory_chart = inventory_df[
-            [
-                "metric",
-                "baseline",
-                "optimized",
-            ]
-        ].copy()
+            float(
+                optimized_stockout or 0
+            ),
+        ],
+    }
 
-        inventory_chart = inventory_chart.set_index(
-            "metric"
-        )
 
-        st.bar_chart(
-            inventory_chart,
-            color=["#94A3B8", "#0EA5A4"],
-        )
+    st.bar_chart(
+        cost_chart
+    )
+
+
+    st.subheader(
+        "Inventory & Service Metrics"
+    )
+
+
+    inventory_chart = {
+
+        "Baseline": [
+            float(
+                get_business_metric(
+                    metrics,
+                    "baseline",
+                    "average_inventory",
+                )
+                or 0
+            ),
+
+            float(
+                get_business_metric(
+                    metrics,
+                    "baseline",
+                    "stockout_units",
+                )
+                or 0
+            ),
+
+            float(
+                get_business_metric(
+                    metrics,
+                    "baseline",
+                    "orders",
+                )
+                or 0
+            ),
+        ],
+
+        "Optimized": [
+            float(
+                get_business_metric(
+                    metrics,
+                    "optimized",
+                    "average_inventory",
+                )
+                or 0
+            ),
+
+            float(
+                get_business_metric(
+                    metrics,
+                    "optimized",
+                    "stockout_units",
+                )
+                or 0
+            ),
+
+            float(
+                get_business_metric(
+                    metrics,
+                    "optimized",
+                    "orders",
+                )
+                or 0
+            ),
+        ],
+    }
+
+
+    st.bar_chart(
+        inventory_chart
+    )
+
 
     st.subheader(
         "Detailed Business Impact"
     )
 
-    # Round numeric columns.
-    display_df = metrics_df.copy()
 
-    for column in [
+    business_rows = []
+
+    metric_names = set()
+
+    for block_name in [
         "baseline",
         "optimized",
-        "change_pct",
     ]:
-        if column in display_df.columns:
-            display_df[column] = (
-                pd.to_numeric(
-                    display_df[column],
-                    errors="coerce",
-                )
-                .round(2)
+
+        block = metrics.get(
+            block_name,
+            {},
+        )
+
+        if isinstance(
+            block,
+            dict,
+        ):
+
+            metric_names.update(
+                block.keys()
             )
 
-    st.dataframe(
-        display_df,
-        use_container_width=True,
-        hide_index=True,
+
+    for metric_name in sorted(
+        metric_names
+    ):
+
+        baseline_value = get_business_metric(
+            metrics,
+            "baseline",
+            metric_name,
+        )
+
+        optimized_value = get_business_metric(
+            metrics,
+            "optimized",
+            metric_name,
+        )
+
+
+        if metric_name in {
+            "service_level",
+            "fill_rate",
+        }:
+
+            change = percentage_point_change(
+                baseline_value,
+                optimized_value,
+            )
+
+        else:
+
+            change = percent_change(
+                baseline_value,
+                optimized_value,
+            )
+
+
+        business_rows.append(
+            {
+                "Metric":
+                    metric_name.replace(
+                        "_",
+                        " ",
+                    ).title(),
+
+                "Baseline":
+                    format_number(
+                        baseline_value
+                    ),
+
+                "Optimized":
+                    format_number(
+                        optimized_value
+                    ),
+
+                "Change":
+                    change or "—",
+            }
+        )
+
+
+    # st.table accepts a list of dictionaries.
+    st.table(
+        business_rows
     )
+
 
     st.caption(
-        "Negative change percentages indicate a reduction from baseline. "
-        "Positive service-level change is expressed in percentage points "
-        "where shown."
+        "Negative cost changes indicate a reduction from baseline. "
+        "Service-level changes are shown in percentage points."
     )
 
 
-# -------------------------------------------------------------------
+# =====================================================================
 # SCENARIO ANALYSIS
-# -------------------------------------------------------------------
+# =====================================================================
 
 elif page == "Scenario Analysis":
 
     section_intro(
         "Scenario Analysis",
-        "Stress-test the inventory policy against a hypothetical demand growth shock.",
+        "Stress-test the selected inventory policy against a demand-growth scenario.",
     )
+
 
     growth = st.slider(
         "Demand growth",
@@ -1442,7 +2217,9 @@ elif page == "Scenario Analysis":
         format="%+.0f%%",
     )
 
-    payload = post_json(
+
+    payload = request_json(
+        "POST",
         "/scenario",
         {
             "store_id": store,
@@ -1452,11 +2229,15 @@ elif page == "Scenario Analysis":
             "demand_growth": growth,
         },
         timeout=30,
+        retries=3,
     )
 
+
     if payload is None:
+
         api_error_message()
         st.stop()
+
 
     base = payload.get(
         "base",
@@ -1468,127 +2249,160 @@ elif page == "Scenario Analysis":
         {},
     )
 
-    if not base or not scenario:
+
+    if not isinstance(
+        base,
+        dict,
+    ) or not isinstance(
+        scenario,
+        dict,
+    ):
+
         st.warning(
-            "Scenario response did not contain both base and scenario results."
+            "Scenario response is incomplete."
         )
+
         st.stop()
+
 
     st.subheader(
         f"{store} × {item}"
     )
 
+
     st.caption(
         f"Demand growth scenario: {growth:+.0%}"
     )
 
-    # KPI cards.
-    col1, col2, col3, col4 = st.columns(
+
+    c1, c2, c3, c4 = st.columns(
         4
     )
 
-    with col1:
 
-        base_demand = float(
-            base.get(
-                "mean_daily_demand",
-                0,
-            )
-        )
-
-        scenario_demand = float(
-            scenario.get(
-                "mean_daily_demand",
-                0,
-            )
-        )
+    with c1:
 
         st.metric(
             "Mean Daily Demand",
             format_number(
-                scenario_demand
+                scenario.get(
+                    "mean_daily_demand"
+                )
             ),
-            f"{scenario_demand - base_demand:+.2f}",
+            format_number(
+                float(
+                    scenario.get(
+                        "mean_daily_demand",
+                        0,
+                    )
+                    or 0
+                )
+                -
+                float(
+                    base.get(
+                        "mean_daily_demand",
+                        0,
+                    )
+                    or 0
+                )
+            ),
         )
 
-    with col2:
 
-        base_ss = float(
-            base.get(
-                "safety_stock",
-                0,
-            )
-        )
-
-        scenario_ss = float(
-            scenario.get(
-                "safety_stock",
-                0,
-            )
-        )
+    with c2:
 
         st.metric(
             "Safety Stock",
             format_number(
-                scenario_ss
+                scenario.get(
+                    "safety_stock"
+                )
             ),
-            f"{scenario_ss - base_ss:+.2f}",
+            format_number(
+                float(
+                    scenario.get(
+                        "safety_stock",
+                        0,
+                    )
+                    or 0
+                )
+                -
+                float(
+                    base.get(
+                        "safety_stock",
+                        0,
+                    )
+                    or 0
+                )
+            ),
         )
 
-    with col3:
 
-        base_rop = float(
-            base.get(
-                "reorder_point",
-                0,
-            )
-        )
-
-        scenario_rop = float(
-            scenario.get(
-                "reorder_point",
-                0,
-            )
-        )
+    with c3:
 
         st.metric(
             "Reorder Point",
             format_number(
-                scenario_rop
+                scenario.get(
+                    "reorder_point"
+                )
             ),
-            f"{scenario_rop - base_rop:+.2f}",
+            format_number(
+                float(
+                    scenario.get(
+                        "reorder_point",
+                        0,
+                    )
+                    or 0
+                )
+                -
+                float(
+                    base.get(
+                        "reorder_point",
+                        0,
+                    )
+                    or 0
+                )
+            ),
         )
 
-    with col4:
 
-        base_q = float(
-            base.get(
-                "order_quantity",
-                0,
-            )
-        )
-
-        scenario_q = float(
-            scenario.get(
-                "order_quantity",
-                0,
-            )
-        )
+    with c4:
 
         st.metric(
             "Order Quantity",
             format_number(
-                scenario_q
+                scenario.get(
+                    "order_quantity"
+                )
             ),
-            f"{scenario_q - base_q:+.2f}",
+            format_number(
+                float(
+                    scenario.get(
+                        "order_quantity",
+                        0,
+                    )
+                    or 0
+                )
+                -
+                float(
+                    base.get(
+                        "order_quantity",
+                        0,
+                    )
+                    or 0
+                )
+            ),
         )
+
 
     st.divider()
 
-    # Side-by-side action.
+
     action_col1, action_col2 = st.columns(
         2
     )
+
 
     with action_col1:
 
@@ -1612,6 +2426,7 @@ elif page == "Scenario Analysis":
             ),
         )
 
+
     with action_col2:
 
         st.subheader(
@@ -1634,135 +2449,99 @@ elif page == "Scenario Analysis":
             ),
         )
 
-    # Comparison table.
-    comparison = pd.DataFrame(
-        [
-            {
-                "Metric": "Mean daily demand",
-                "Base": base.get(
-                    "mean_daily_demand"
-                ),
-                "Scenario": scenario.get(
-                    "mean_daily_demand"
-                ),
-            },
-            {
-                "Metric": "Lead-time demand",
-                "Base": base.get(
-                    "lead_time_demand"
-                ),
-                "Scenario": scenario.get(
-                    "lead_time_demand"
-                ),
-            },
-            {
-                "Metric": "Demand std",
-                "Base": base.get(
-                    "demand_std"
-                ),
-                "Scenario": scenario.get(
-                    "demand_std"
-                ),
-            },
-            {
-                "Metric": "Safety stock",
-                "Base": base.get(
-                    "safety_stock"
-                ),
-                "Scenario": scenario.get(
-                    "safety_stock"
-                ),
-            },
-            {
-                "Metric": "Reorder point",
-                "Base": base.get(
-                    "reorder_point"
-                ),
-                "Scenario": scenario.get(
-                    "reorder_point"
-                ),
-            },
-            {
-                "Metric": "Order quantity",
-                "Base": base.get(
-                    "order_quantity"
-                ),
-                "Scenario": scenario.get(
-                    "order_quantity"
-                ),
-            },
-        ]
-    )
-
-    for column in [
-        "Base",
-        "Scenario",
-    ]:
-
-        comparison[column] = (
-            pd.to_numeric(
-                comparison[column],
-                errors="coerce",
-            )
-            .round(2)
-        )
 
     st.subheader(
         "Base vs Scenario"
     )
 
-    st.dataframe(
-        comparison,
-        use_container_width=True,
-        hide_index=True,
+
+    comparison_rows = []
+
+
+    for metric_name in [
+        "mean_daily_demand",
+        "lead_time_demand",
+        "demand_std",
+        "safety_stock",
+        "reorder_point",
+        "order_quantity",
+    ]:
+
+        comparison_rows.append(
+            {
+                "Metric":
+                    metric_name.replace(
+                        "_",
+                        " ",
+                    ).title(),
+
+                "Base":
+                    format_number(
+                        base.get(
+                            metric_name
+                        )
+                    ),
+
+                "Scenario":
+                    format_number(
+                        scenario.get(
+                            metric_name
+                        )
+                    ),
+            }
+        )
+
+
+    st.table(
+        comparison_rows
     )
 
-    # ROP comparison chart.
-    rop_chart = pd.DataFrame(
-        {
-            "Reorder Point": [
-                float(
-                    base.get(
-                        "reorder_point",
-                        0,
-                    )
-                ),
-                float(
-                    scenario.get(
-                        "reorder_point",
-                        0,
-                    )
-                ),
-            ]
-        },
-        index=[
-            "Base",
-            "Scenario",
-        ],
-    )
 
     st.subheader(
         "Reorder Point Comparison"
     )
 
+
     st.bar_chart(
-        rop_chart,
-        color=["#1E3A8A"],
+        {
+            "Base": [
+                float(
+                    base.get(
+                        "reorder_point",
+                        0,
+                    )
+                    or 0
+                )
+            ],
+
+            "Scenario": [
+                float(
+                    scenario.get(
+                        "reorder_point",
+                        0,
+                    )
+                    or 0
+                )
+            ],
+        }
     )
+
 
     st.caption(
-        f"Scenario demand growth: {scenario.get('scenario_demand_growth', growth):+.0%}"
+        "Scenario analysis applies the selected demand-growth assumption "
+        "to the base inventory recommendation."
     )
 
 
-# -------------------------------------------------------------------
+# =====================================================================
 # FOOTER
-# -------------------------------------------------------------------
+# =====================================================================
 
 st.markdown(
     f"""
     <div class="app-footer">
-        Retail Demand Forecasting &amp; Inventory Optimization · Connected to {API_BASE_URL}
+        Retail Demand Forecasting &amp; Inventory Optimization
+        · Connected to {API_BASE_URL}
     </div>
     """,
     unsafe_allow_html=True,
