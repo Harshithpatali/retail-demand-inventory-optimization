@@ -907,6 +907,7 @@ with st.sidebar:
         "WORKSPACE",
         ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio"],
         label_visibility="collapsed",
+        key="workspace_navigation_v2",
     )
     service_level = st.slider("Target service level", .80, .99, .90, .01, format="%.2f")
     lead_time = st.slider("Supplier lead time · days", 1, 30, 7)
@@ -917,6 +918,7 @@ with st.sidebar:
 
 
 # ------------------------------ MAIN VIEW ------------------------------
+st.caption(f"Active workspace: {page} · Dashboard build 2026.11.11.2")
 st.markdown(
     f'<div class="hero"><div class="eyebrow">RETAIL INTELLIGENCE PLATFORM / LIVE WORKSPACE</div>'
     f'<h1 style="margin:5px 0 2px 0">Retail Demand & Inventory Intelligence</h1>'
