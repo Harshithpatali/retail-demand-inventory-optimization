@@ -341,6 +341,27 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
                      service_level: float, lead_time: int) -> None:
     st.markdown('<div class="eyebrow">DECISION SCIENCE / PERIODIC REVIEW</div>', unsafe_allow_html=True)
     st.header("Inventory control tower")
+    state_names = {
+        "CA": "California",
+        "TX": "Texas",
+        "WI": "Wisconsin",
+    }
+    state_code = store.split("_", 1)[0] if "_" in store else store
+    state_name = state_names.get(state_code, "State not mapped")
+    st.markdown(
+        f'<div style="display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 16px 0;">'
+        f'<div style="flex:1;min-width:180px;padding:12px 14px;border:1px solid #2a4056;'
+        f'border-radius:10px;background:#101b29;">'
+        f'<div class="small-mono">SELECTED STORE / STATE</div>'
+        f'<div style="font-size:1.1rem;font-weight:800;color:#e7eef7">{store} · {state_name}</div>'
+        f'<div style="font-size:.72rem;color:#91a4b8">M5 dataset identifier · physical address not supplied</div></div>'
+        f'<div style="flex:1;min-width:180px;padding:12px 14px;border:1px solid #2a4056;'
+        f'border-radius:10px;background:#101b29;">'
+        f'<div class="small-mono">SELECTED SKU / ITEM</div>'
+        f'<div style="font-size:1.1rem;font-weight:800;color:#e7eef7">{item}</div>'
+        f'<div style="font-size:.72rem;color:#91a4b8">M5 item identifier</div></div></div>',
+        unsafe_allow_html=True,
+    )
     current = st.number_input("On-hand inventory (units)", min_value=0.0, value=20.0, step=1.0)
     try:
         with st.spinner("Calculating replenishment policy…"):
