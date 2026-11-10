@@ -14,6 +14,10 @@ The default experiment uses a deterministic 200 item–store subset from the 30,
 
 The original validation benchmark reported XGBoost WAPE of 0.2808, compared with 0.6873 for the naive baseline. The original inventory simulation reported a 16.21% reduction in simulated cost, with a 2.46 percentage-point increase in unit fill/service ratio. These are historical results from the original experiment and are not re-labelled as outcomes of the new advanced evaluation scripts.
 
+## Network intelligence
+
+The dashboard includes a Network Intelligence workspace with state-level M5 demand aggregation, a US state choropleth, store-to-state summaries, and a separate synthetic distribution-centre scenario layer. M5 does not provide verified store or warehouse addresses; therefore, state-level proxies are used for observed store performance and synthetic hub anchors are explicitly labelled as simulated. No real road distances or facility relationships are claimed. See [network geography and data policy](docs/network_intelligence_data_policy.md).
+
 ## Interactive analytics dashboard
 
 The Streamlit workspace includes an executive overview, full-history EDA, interactive demand forecast, inventory control, business-impact analysis, and a what-if scenario studio. The EDA page exposes descriptive statistics, demand quantiles, intermittency, long-run trend, monthly and weekday seasonality, distribution, and lag autocorrelation. The API caches full-series EDA results with a bounded process-local cache.
