@@ -725,6 +725,8 @@ if history.empty:
 
 if page == "Overview":
     render_overview(history, store, item)
+elif page == "Full EDA":
+    render_eda(store, item)
 elif page == "Demand Forecast":
     render_forecast(history, store, item)
 elif page == "Inventory Control":
