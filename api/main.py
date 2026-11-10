@@ -35,3 +35,17 @@ for router in [
     network_router,
 ]:
     app.include_router(router)
+
+
+@app.get("/")
+def root():
+    """Small API landing page with links to health, network data and interactive docs."""
+    return {
+        "service": "Retail Demand Forecasting & Inventory Optimization API",
+        "version": app.version,
+        "status": "online",
+        "health": "/health",
+        "network_intelligence": "/network",
+        "api_docs": "/docs",
+        "openapi": "/openapi.json",
+    }
