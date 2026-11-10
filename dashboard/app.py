@@ -70,7 +70,7 @@ st.markdown(
 # and short-lived so the dashboard does not repeatedly scan Parquet or infer.
 @st.cache_data(ttl=600, max_entries=8, show_spinner=False)
 def load_options() -> dict[str, Any]:
-    response = httpx.get(f"{API_BASE_URL}/options", timeout=8.0)
+    response = httpx.get(f"{API_BASE_URL}/options", timeout=60.0)
     response.raise_for_status()
     return response.json()
 
