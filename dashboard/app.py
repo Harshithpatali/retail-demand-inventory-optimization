@@ -304,7 +304,7 @@ def render_forecast(history: pd.DataFrame, store: str, item: str) -> None:
         x=forecast["date"], y=forecast["forecast"], name="Forecast",
         line=dict(color="#f0b66b", width=2.8),
     ))
-    fig.add_vline(x=history["date"].max().timestamp() * 1000, line_dash="dot",
+    fig.add_vline(x=history["date"].max(), line_dash="dot",
                   line_color="#8296aa", opacity=.7)
     st.plotly_chart(plot_layout(fig, 410), use_container_width=True, config=PLOT_CONFIG)
 
@@ -558,7 +558,7 @@ with st.sidebar:
         ["Overview", "Demand Forecast", "Inventory Control", "Business Impact", "Scenario Studio"],
         label_visibility="collapsed",
     )
-    service_level = st.slider("Target service level", .80, .99, .90, .01, format="%.0f%%")
+    service_level = st.slider("Target service level", .80, .99, .90, .01, format="%.2f")
     lead_time = st.slider("Supplier lead time · days", 1, 30, 7)
     st.divider()
     st.markdown('<span class="status-pill">● API CONNECTED</span>', unsafe_allow_html=True)
