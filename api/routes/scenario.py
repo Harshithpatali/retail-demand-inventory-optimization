@@ -21,7 +21,7 @@ def _scenario_cached(
 ):
     """Memoize repeated what-if calculations for interactive slider use."""
     base = _service.calculate(
-        store_id, item_id, service_level, lead_time_days, 0.0
+        store_id, item_id, service_level, lead_time_days, 0.0, include_model_metadata=False
     )
     scenario = dict(base)
     factor = 1.0 + demand_growth
