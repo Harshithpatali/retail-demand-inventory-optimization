@@ -675,7 +675,7 @@ def render_network_intelligence() -> None:
             payload = load_network()
     except Exception as exc:
         st.error(f"Network analytics unavailable: {exc}")
-        st.info("Confirm the latest FastAPI deployment is live and the processed forecast feature artifact is present.")
+        st.info("Confirm that the latest FastAPI deployment is live and the processed forecast feature artifact is present.")
         return
 
     states = pd.DataFrame(payload.get("states", []))
@@ -701,79 +701,96 @@ def render_network_intelligence() -> None:
     k3.metric("Store-item series", f"{int(states['series_count'].sum()):,}")
     k4.metric("Historical demand", money(states["total_demand"].sum()), "units")
 
-    card_title("State-level demand intensity", "Interactive US state map · observed demand is aggregated to state level; no precise store pins.")
+    card_title("State-level demand intensity", "Interactive US state map · demand aggregated by state; no precise store pins.")
     fig = px.choropleth(
-            states,
-            locations="state_code",
-            locationmode="USA-states",
-            color="total_demand",
-            hover_name="state_name",
-            hover_data={
-                "state_code": True,
-                "store_count": True,
-                "series_count": True,
-                "item_count": True,
-                "total_demand": ":,.0f",
-                "average_daily_demand": ":,.1f",
-            },
-            color_continuous_scale=["#142b3c", "#267a91", "#65d1df"],
-            scope="usa",
-            labels={
-                "total_demand": "Historical demand",
-                "store_count": "Stores",
-                "series_count": "Series",
-                "item_count": "Items",
-                "average_daily_demand": "Avg daily demand",
-            },
-        )
-        # Synthetic distribution-centre scenario anchors are intentionally
-        # separate from the observed state-level store aggregation.
+        states,
+        locations="state_code",
+        locationmode="USA-states",
+        color="total_demand",
+        hover_name="state_name",
+        hover_data={
+            "state_code": True,
+            "store_count": True,
+            "series_count": True,
+            "item_count": True,
+            "total_demand": ":,.0f",
+            "average_daily_demand": ":,.1f",
+        },
+        color_continuous_scale=["#142b3c", "#267a91", "#65d1df"],
+        scope="usa",
+        labels={
+            "total_demand": "Historical demand",
+            "store_count": "Stores",
+            "series_count": "Series",
+            "item_count": "Items",
+            "average_daily_demand": "Avg daily demand",
+        },
+    )
     if not centres.empty:
-            fig.add_trace(go.Scattergeo(
-                lon=centres["longitude"],
-                lat=centres["latitude"],
-                text=centres["distribution_center_id"],
-                customdata=centres[["city_label", "state_name"]],
-                mode="markers+text",
-                textposition="top center",
-                name="Synthetic DC scenario anchors",
-                marker=dict(size=11, color="#f0b66b", symbol="diamond",
-                            line=dict(color="#fff0d6", width=1)),
-                hovertemplate="<b>%{text}</b><br>%{customdata[0]}<br>%{customdata[1]}<br>Synthetic only<extra></extra>",
-            ))
-        fig.update_geos(
-            showcountries=True, countrycolor="#40566b",
-            showland=True, landcolor="#0d1723",
-            showlakes=True, lakecolor="#0b1520",
-            bgcolor="rgba(0,0,0,0)",
-            subunitcolor="#33485c",
-        )
-        fig.update_layout(
-            template="plotly_dark", height=540,
-            margin=dict(l=0, r=0, t=18, b=0),
-            paper_bgcolor="rgba(0,0,0,0)",
-            geo=dict(bgcolor="rgba(0,0,0,0)"),
-            coloraxis_colorbar=dict(title="Demand", tickformat=",.2s"),
-            legend=dict(orientation="h", y=-.04, x=0),
-        )
-        st.plotly_chart(fig, use_container_width=True, config=PLOT_CONFIG)
-    with right:
-        card_title("State performance")
+        fig.add_trace(go.Scattergeo(
+            lon=centres["longitude"],
+            lat=centres["latitude"],
+            text=centres["distribution_center_id"],
+            customdata=centres[["city_label", "state_name"]],
+            mode="markers+text",
+            textposition="top center",
+            name="Synthetic DC scenario anchors",
+            marker=dict(size=11, color="#f0b66b", symbol="diamond",
+                        line=dict(color="#fff0d6", width=1)),
+            hovertemplate="<b>%{text}</b><br>%{customdata[0]}<br>%{customdata[1]}<br>Synthetic only<extra></extra>",
+        ))
+    fig.update_geos(
+        showcountries=True,
+        countrycolor="#40566b",
+        showland=True,
+        landcolor="#0d1723",
+        showlakes=True,
+        lakecolor="#0b1520",
+        bgcolor="rgba(0,0,0,0)",
+        subunitcolor="#33485c",
+    )
+    fig.update_layout(
+        template="plotly_dark",
+        height=540,
+        margin=dict(l=0, r=0, t=18, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        geo=dict(bgcolor="rgba(0,0,0,0)"),
+        coloraxis_colorbar=dict(title="Demand", tickformat=",.2s"),
+        legend=dict(orientation="h", y=-.04, x=0),
+    )
+    st.plotly_chart(fig, use_container_width=True, config=PLOT_CONFIG)
+
+    left, right = st.columns([1.15, 1])
+    with left:
+        card_title("State performance", "Ranked historical demand across represented states.")
         state_view = states.sort_values("total_demand", ascending=False).copy()
         fig = px.bar(
-            state_view, x="state_code", y="total_demand",
+            state_view,
+            x="state_code",
+            y="total_demand",
             color="total_demand",
             color_continuous_scale=["#18384c", "#58cce1"],
             hover_data=["store_count", "series_count", "item_count"],
         )
-        fig.update_layout(coloraxis_showscale=False, xaxis_title="State", yaxis_title="Historical demand")
-        st.plotly_chart(plot_layout(fig, 300, legend=False), use_container_width=True, config=PLOT_CONFIG)
+        fig.update_layout(
+            coloraxis_showscale=False,
+            xaxis_title="State",
+            yaxis_title="Historical demand",
+        )
+        st.plotly_chart(plot_layout(fig, 330, legend=False), use_container_width=True, config=PLOT_CONFIG)
+    with right:
+        card_title("State summary", "Store and SKU coverage in the selected M5 sample.")
         st.dataframe(
             state_view[["state_name", "store_count", "series_count", "total_demand"]].rename(
-                columns={"state_name": "State", "store_count": "Stores",
-                         "series_count": "Series", "total_demand": "Demand"}
+                columns={
+                    "state_name": "State",
+                    "store_count": "Stores",
+                    "series_count": "Series",
+                    "total_demand": "Demand",
+                }
             ).round(1),
-            use_container_width=True, hide_index=True,
+            use_container_width=True,
+            hide_index=True,
         )
 
     st.subheader("Synthetic distribution-centre scenario")
@@ -787,37 +804,43 @@ def render_network_intelligence() -> None:
             ),
             on=["distribution_center_id", "state_name"],
             how="left",
-        )
-        centre_view = centre_view.fillna(0)
-        c1, c2, c3 = st.columns(3)
-        for col, (_, row) in zip([c1, c2, c3], centre_view.iterrows()):
+        ).fillna(0)
+        columns = st.columns(min(3, len(centre_view)))
+        for col, (_, row) in zip(columns, centre_view.iterrows()):
             with col:
-                st.metric(str(row["distribution_center_id"]),
-                          f"{int(row['assigned_stores'])} stores",
-                          f"{int(row['assigned_series'])} series")
+                st.metric(
+                    str(row["distribution_center_id"]),
+                    f"{int(row['assigned_stores'])} stores",
+                    f"{int(row['assigned_series'])} series",
+                )
                 st.caption(f"{row['city_label']} · synthetic")
-        store_view = stores[[
-            "store_id", "state_name", "distribution_center_id",
-            "assignment_type", "series_count", "item_count",
-            "average_daily_demand", "total_demand",
-        ]].sort_values(["state_name", "store_id"])
+        store_view = stores[
+            [
+                "store_id", "state_name", "distribution_center_id",
+                "assignment_type", "series_count", "item_count",
+                "average_daily_demand", "total_demand",
+            ]
+        ].sort_values(["state_name", "store_id"])
         st.dataframe(
             store_view.rename(columns={
-                "store_id": "M5 store", "state_name": "State",
+                "store_id": "M5 store",
+                "state_name": "State",
                 "distribution_center_id": "Scenario hub",
                 "assignment_type": "Assignment basis",
-                "series_count": "Series", "item_count": "Items",
+                "series_count": "Series",
+                "item_count": "Items",
                 "average_daily_demand": "Avg daily demand",
                 "total_demand": "Historical demand",
             }).round(1),
-            use_container_width=True, hide_index=True,
+            use_container_width=True,
+            hide_index=True,
         )
 
     with st.expander("Geography and data provenance"):
         st.json(metadata)
         st.markdown(
-            "State-level geography is approximate. The distribution-centre points are generated scenario anchors "
-            "near representative cities. They are not real facilities, and the current page does not estimate "
+            "State-level geography is approximate. Distribution-centre points are generated scenario anchors "
+            "near representative cities. They are not real facilities, and this page does not estimate "
             "road distance, freight cost, or real service territories."
         )
 
