@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+import pandas as pd
 from fastapi import APIRouter, HTTPException
 
 from api.services.artifacts import ArtifactStore
@@ -12,20 +13,18 @@ _store = ArtifactStore()
 
 @lru_cache(maxsize=256)
 def _series_cached(store_id: str, item_id: str):
+    """Cache the latest historical observations for repeat dashboard requests."""
     frame = _store.load_series(store_id, item_id)
     if frame.empty:
         return None
-    # Return immutable, JSON-safe records from the cached dataframe.
+
     records = []
     for row in frame.itertuples(index=False):
+        price = None if pd.isna(row.sell_price) else float(row.sell_price)
         records.append({
             "date": row.date.date().isoformat(),
             "demand": float(row.demand),
-            "sell_price": (
-                float(row.sell_price)
-                if row.sell_price is not None
-                else None
-            ),
+            "sell_price": price,
         })
     return tuple(records)
 
