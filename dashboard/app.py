@@ -665,6 +665,7 @@ def render_eda(store: str, item: str) -> None:
 def render_network_intelligence() -> None:
     st.markdown('<div class="eyebrow">GEOSPATIAL ANALYTICS / NETWORK DESIGN</div>', unsafe_allow_html=True)
     st.header("Network intelligence")
+    st.caption("NETWORK INTELLIGENCE · BUILD 2026.11.11 · STATE-LEVEL OBSERVED DATA + SYNTHETIC HUB SCENARIO")
     st.markdown(
         '<div class="hero-sub">Observed M5 demand aggregated by state, with a separate synthetic distribution-centre scenario layer.</div>',
         unsafe_allow_html=True,
@@ -700,10 +701,8 @@ def render_network_intelligence() -> None:
     k3.metric("Store-item series", f"{int(states['series_count'].sum()):,}")
     k4.metric("Historical demand", money(states["total_demand"].sum()), "units")
 
-    left, right = st.columns([1.7, 1])
-    with left:
-        card_title("State-level demand intensity", "Choropleth is aggregated by state; there are no precise store pins.")
-        fig = px.choropleth(
+    card_title("State-level demand intensity", "Interactive US state map · observed demand is aggregated to state level; no precise store pins.")
+    fig = px.choropleth(
             states,
             locations="state_code",
             locationmode="USA-states",
@@ -729,7 +728,7 @@ def render_network_intelligence() -> None:
         )
         # Synthetic distribution-centre scenario anchors are intentionally
         # separate from the observed state-level store aggregation.
-        if not centres.empty:
+    if not centres.empty:
             fig.add_trace(go.Scattergeo(
                 lon=centres["longitude"],
                 lat=centres["latitude"],
@@ -750,7 +749,7 @@ def render_network_intelligence() -> None:
             subunitcolor="#33485c",
         )
         fig.update_layout(
-            template="plotly_dark", height=470,
+            template="plotly_dark", height=540,
             margin=dict(l=0, r=0, t=18, b=0),
             paper_bgcolor="rgba(0,0,0,0)",
             geo=dict(bgcolor="rgba(0,0,0,0)"),
@@ -925,8 +924,10 @@ elif page == "Network Intelligence":
     render_network_intelligence()
 elif page == "Business Impact":
     render_business()
-else:
+elif page == "Scenario Studio":
     render_scenario(store, item, service_level, lead_time)
+else:
+    st.error(f"Unknown workspace selected: {page}")
 
 st.markdown("---")
 st.markdown(
