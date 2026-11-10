@@ -122,6 +122,17 @@ def load_inventory(
     return response.json()
 
 
+@st.cache_data(ttl=300, max_entries=128, show_spinner=False)
+def load_eda(store_id: str, item_id: str) -> dict[str, Any]:
+    response = httpx.get(
+        f"{API_BASE_URL}/eda",
+        params={"store_id": store_id, "item_id": item_id},
+        timeout=60.0,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 @st.cache_data(ttl=120, max_entries=512, show_spinner=False)
 def load_scenario(
     store_id: str, item_id: str, service_level: float,
@@ -495,6 +506,133 @@ def render_business() -> None:
         ]), use_container_width=True, hide_index=True)
 
 
+
+def render_eda(store: str, item: str) -> None:
+    st.markdown('<div class="eyebrow">STATISTICAL EXPLORATION / FULL HISTORY</div>', unsafe_allow_html=True)
+    st.header("Exploratory data analysis")
+    st.markdown(
+        '<div class="hero-sub">Full historical demand profile · distribution · temporal structure · intermittency · dependence</div>',
+        unsafe_allow_html=True,
+    )
+    try:
+        with st.spinner("Computing full-history descriptive statistics…"):
+            payload = load_eda(store, item)
+    except Exception as exc:
+        st.error(f"EDA service unavailable: {exc}")
+        return
+
+    stats = payload.get("stats", {})
+    daily = pd.DataFrame(payload.get("daily", []))
+    if daily.empty:
+        st.warning("No historical observations were returned for this series.")
+        return
+    daily["date"] = pd.to_datetime(daily["date"])
+    daily["demand"] = pd.to_numeric(daily["demand"], errors="coerce").fillna(0.0)
+
+    st.caption(
+        f"Series {store} × {item} · {stats.get('observations', len(daily)):,} observations · "
+        f"{stats.get('start_date', '—')} to {stats.get('end_date', '—')}"
+    )
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("Total demand", money(stats.get("total_demand")), "units")
+    k2.metric("Daily mean", money(stats.get("mean")), "units / day")
+    k3.metric("Median", money(stats.get("median")), "units / day")
+    k4.metric("Demand std", money(stats.get("std")), "units")
+    k5.metric("Zero-demand days", pct(stats.get("zero_demand_rate")), "intermittency")
+
+    k6, k7, k8, k9, k10 = st.columns(5)
+    k6.metric("Coefficient of variation", money(stats.get("coefficient_of_variation"),))
+    k7.metric("Skewness", money(stats.get("skewness")))
+    k8.metric("90th percentile", money(stats.get("q90")))
+    k9.metric("Maximum demand", money(stats.get("maximum")))
+    k10.metric("Non-zero mean", money(stats.get("nonzero_mean")))
+
+    st.divider()
+    left, right = st.columns([1.6, 1])
+    with left:
+        card_title("Long-run demand trend", "Daily demand and 28-day rolling mean across the full history.")
+        trend = daily.copy()
+        trend["28-day mean"] = trend["demand"].rolling(28, min_periods=1).mean()
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=trend["date"], y=trend["demand"], name="Daily demand",
+                                 mode="lines", line=dict(color="#56c9df", width=1)))
+        fig.add_trace(go.Scatter(x=trend["date"], y=trend["28-day mean"], name="28-day mean",
+                                 mode="lines", line=dict(color="#f0b66b", width=2.5)))
+        st.plotly_chart(plot_layout(fig, 350), use_container_width=True, config=PLOT_CONFIG)
+    with right:
+        card_title("Demand distribution", "Histogram based on all daily observations.")
+        hist = payload.get("histogram", {})
+        edges = hist.get("edges", [])
+        counts = hist.get("counts", [])
+        if len(edges) == len(counts) + 1:
+            centers = [(edges[i] + edges[i + 1]) / 2 for i in range(len(counts))]
+            widths = [edges[i + 1] - edges[i] for i in range(len(counts))]
+            fig = go.Figure(go.Bar(x=centers, y=counts, width=widths,
+                                   marker_color="#58cce1", opacity=.85))
+            fig.update_layout(xaxis_title="Daily demand", yaxis_title="Frequency")
+            st.plotly_chart(plot_layout(fig, 350, legend=False), use_container_width=True, config=PLOT_CONFIG)
+
+    left, right = st.columns(2)
+    with left:
+        card_title("Monthly demand and volatility", "Monthly total demand and within-month standard deviation.")
+        monthly = pd.DataFrame(payload.get("monthly", []))
+        if not monthly.empty:
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=monthly["month"], y=monthly["sum"], name="Total demand",
+                                 marker_color="#56c9df"))
+            fig.add_trace(go.Scatter(x=monthly["month"], y=monthly["std"], name="Daily std",
+                                     yaxis="y2", line=dict(color="#f0b66b", width=2)))
+            fig.update_layout(yaxis=dict(title="Units"), yaxis2=dict(title="Daily std", overlaying="y", side="right"))
+            st.plotly_chart(plot_layout(fig, 330), use_container_width=True, config=PLOT_CONFIG)
+    with right:
+        card_title("Day-of-week seasonality", "Mean, median and dispersion by weekday.")
+        weekday = pd.DataFrame(payload.get("weekday", []))
+        if not weekday.empty:
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=weekday["weekday"], y=weekday["mean"], name="Mean",
+                                 marker_color="#56c9df"))
+            fig.add_trace(go.Scatter(x=weekday["weekday"], y=weekday["median"], name="Median",
+                                     mode="lines+markers", line=dict(color="#f0b66b", width=2)))
+            st.plotly_chart(plot_layout(fig, 330), use_container_width=True, config=PLOT_CONFIG)
+
+    left, right = st.columns(2)
+    with left:
+        card_title("Month-of-year seasonal pattern", "Average demand by calendar month, pooled across years.")
+        months = pd.DataFrame(payload.get("month_of_year", []))
+        if not months.empty:
+            fig = px.bar(months, x="month_name", y="demand",
+                         color="demand", color_continuous_scale=["#17384b", "#58cce1"])
+            fig.update_layout(coloraxis_showscale=False, xaxis_title="Month", yaxis_title="Mean daily demand")
+            st.plotly_chart(plot_layout(fig, 300, legend=False), use_container_width=True, config=PLOT_CONFIG)
+    with right:
+        card_title("Autocorrelation diagnostics", "Pearson autocorrelation at selected daily lags.")
+        lags = ["1 day", "7 days", "28 days"]
+        values = [stats.get("lag1_autocorrelation"), stats.get("lag7_autocorrelation"), stats.get("lag28_autocorrelation")]
+        acf = pd.DataFrame({"Lag": lags, "Autocorrelation": [v if v is not None else 0 for v in values]})
+        fig = px.bar(acf, x="Lag", y="Autocorrelation",
+                     color="Autocorrelation", color_continuous_scale=["#b58ae8", "#56c9df"])
+        fig.add_hline(y=0, line_color="#8fa1b5", line_width=1)
+        fig.update_layout(coloraxis_showscale=False, yaxis_range=[-1, 1])
+        st.plotly_chart(plot_layout(fig, 300, legend=False), use_container_width=True, config=PLOT_CONFIG)
+
+    st.subheader("Statistical profile")
+    quantile_rows = [
+        {"Statistic": label, "Demand": stats.get(key)}
+        for label, key in [
+            ("Minimum", "minimum"), ("25th percentile", "q25"),
+            ("Median / 50th percentile", "q50"), ("75th percentile", "q75"),
+            ("90th percentile", "q90"), ("95th percentile", "q95"),
+            ("99th percentile", "q99"), ("Maximum", "maximum"),
+            ("Variance", "variance"), ("Kurtosis", "kurtosis"),
+            ("Price-demand correlation", "price_demand_correlation"),
+        ]
+    ]
+    st.dataframe(pd.DataFrame(quantile_rows), use_container_width=True, hide_index=True)
+    with st.expander("Inspect full daily history"):
+        st.dataframe(daily, use_container_width=True, hide_index=True)
+    st.caption("Autocorrelation is descriptive, not causal. Price correlation is unadjusted and should not be interpreted as a price elasticity estimate.")
+
+
 def render_scenario(store: str, item: str, service_level: float, lead_time: int) -> None:
     st.markdown('<div class="eyebrow">WHAT-IF MODELLING / DECISION SUPPORT</div>', unsafe_allow_html=True)
     st.header("Scenario studio")
@@ -555,7 +693,7 @@ with st.sidebar:
     st.divider()
     page = st.radio(
         "WORKSPACE",
-        ["Overview", "Demand Forecast", "Inventory Control", "Business Impact", "Scenario Studio"],
+        ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Business Impact", "Scenario Studio"],
         label_visibility="collapsed",
     )
     service_level = st.slider("Target service level", .80, .99, .90, .01, format="%.2f")
