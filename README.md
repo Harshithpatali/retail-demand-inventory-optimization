@@ -14,6 +14,10 @@ The default experiment uses a deterministic 200 item–store subset from the 30,
 
 The original validation benchmark reported XGBoost WAPE of 0.2808, compared with 0.6873 for the naive baseline. The original inventory simulation reported a 16.21% reduction in simulated cost, with a 2.46 percentage-point increase in unit fill/service ratio. These are historical results from the original experiment and are not re-labelled as outcomes of the new advanced evaluation scripts.
 
+## Interactive analytics dashboard
+
+The Streamlit workspace includes an executive overview, full-history EDA, interactive demand forecast, inventory control, business-impact analysis, and a what-if scenario studio. The EDA page exposes descriptive statistics, demand quantiles, intermittency, long-run trend, monthly and weekday seasonality, distribution, and lag autocorrelation. The API caches full-series EDA results with a bounded process-local cache.
+
 ## Advanced statistical evaluation
 
 Additional analysis tools are available:
