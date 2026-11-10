@@ -921,6 +921,8 @@ elif page == "Demand Forecast":
     render_forecast(history, store, item)
 elif page == "Inventory Control":
     render_inventory(history, store, item, service_level, lead_time)
+elif page == "Network Intelligence":
+    render_network_intelligence()
 elif page == "Business Impact":
     render_business()
 else:
