@@ -1,0 +1,4 @@
+distribution_center_id,state_code,city_label,latitude,longitude,location_type,assignment_rule
+SYNTH_DC_CA,CA,Los Angeles area (synthetic),34.0522,-118.2437,synthetic_scenario_anchor,Assign M5 stores with state_code CA
+SYNTH_DC_TX,TX,Dallas area (synthetic),32.7767,-96.7970,synthetic_scenario_anchor,Assign M5 stores with state_code TX
+SYNTH_DC_WI,WI,Milwaukee area (synthetic),43.0389,-87.9065,synthetic_scenario_anchor,Assign M5 stores with state_code WI
