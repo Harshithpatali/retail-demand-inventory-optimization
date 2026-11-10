@@ -53,9 +53,16 @@ def _eda_payload(store_id: str, item_id: str):
     if len(prices) == len(demand) and prices.notna().sum() > 2 and prices.nunique(dropna=True) > 1:
         price_corr = float(pd.concat([demand, prices], axis=1).corr().iloc[0, 1])
 
+    def safe_number(value):
+        return None if pd.isna(value) or not np.isfinite(value) else float(value)
+
     def safe_corr(lag: int):
         value = demand.autocorr(lag=lag) if len(demand) > lag + 2 else np.nan
-        return None if pd.isna(value) else float(value)
+        return safe_number(value)
+
+    def records_without_nan(dataframe: pd.DataFrame):
+        clean = dataframe.astype(object).where(pd.notna(dataframe), None)
+        return clean.to_dict(orient="records")
 
     nonzero = demand[demand > 0]
     stats = {
@@ -78,8 +85,8 @@ def _eda_payload(store_id: str, item_id: str):
         "q90": float(demand.quantile(.90)),
         "q95": float(demand.quantile(.95)),
         "q99": float(demand.quantile(.99)),
-        "skewness": float(demand.skew()) if len(demand) > 2 else 0.0,
-        "kurtosis": float(demand.kurtosis()) if len(demand) > 3 else 0.0,
+        "skewness": safe_number(demand.skew()) if len(demand) > 2 else 0.0,
+        "kurtosis": safe_number(demand.kurtosis()) if len(demand) > 3 else 0.0,
         "lag1_autocorrelation": safe_corr(1),
         "lag7_autocorrelation": safe_corr(7),
         "lag28_autocorrelation": safe_corr(28),
@@ -93,10 +100,10 @@ def _eda_payload(store_id: str, item_id: str):
     return {
         "stats": stats,
         "daily": daily,
-        "weekday": weekday.rename(columns={"index": "weekday"}).to_dict(orient="records"),
-        "monthly": monthly.to_dict(orient="records"),
-        "yearly": yearly.to_dict(orient="records"),
-        "month_of_year": month_of_year.to_dict(orient="records"),
+        "weekday": records_without_nan(weekday),
+        "monthly": records_without_nan(monthly),
+        "yearly": records_without_nan(yearly),
+        "month_of_year": records_without_nan(month_of_year),
         "histogram": {
             "counts": hist_counts.astype(int).tolist(),
             "edges": hist_edges.astype(float).tolist(),
