@@ -145,7 +145,7 @@ def load_scenario(
             "service_level": service_level, "lead_time_days": lead_time,
             "demand_growth": demand_growth,
         },
-        timeout=8.0,
+        timeout=60.0,
     )
     response.raise_for_status()
     return response.json()
