@@ -133,6 +133,13 @@ def load_eda(store_id: str, item_id: str) -> dict[str, Any]:
     return response.json()
 
 
+@st.cache_data(ttl=600, max_entries=1, show_spinner=False)
+def load_network() -> dict[str, Any]:
+    response = httpx.get(f"{API_BASE_URL}/network", timeout=60.0)
+    response.raise_for_status()
+    return response.json()
+
+
 @st.cache_data(ttl=120, max_entries=512, show_spinner=False)
 def load_scenario(
     store_id: str, item_id: str, service_level: float,
@@ -654,6 +661,168 @@ def render_eda(store: str, item: str) -> None:
     st.caption("Autocorrelation is descriptive, not causal. Price correlation is unadjusted and should not be interpreted as a price elasticity estimate.")
 
 
+
+def render_network_intelligence() -> None:
+    st.markdown('<div class="eyebrow">GEOSPATIAL ANALYTICS / NETWORK DESIGN</div>', unsafe_allow_html=True)
+    st.header("Network intelligence")
+    st.markdown(
+        '<div class="hero-sub">Observed M5 demand aggregated by state, with a separate synthetic distribution-centre scenario layer.</div>',
+        unsafe_allow_html=True,
+    )
+    try:
+        with st.spinner("Loading state-level network aggregates…"):
+            payload = load_network()
+    except Exception as exc:
+        st.error(f"Network analytics unavailable: {exc}")
+        st.info("Confirm the latest FastAPI deployment is live and the processed forecast feature artifact is present.")
+        return
+
+    states = pd.DataFrame(payload.get("states", []))
+    stores = pd.DataFrame(payload.get("stores", []))
+    centres = pd.DataFrame(payload.get("distribution_centers", []))
+    metadata = payload.get("metadata", {})
+    if states.empty:
+        st.warning("No state-level store data is available.")
+        return
+
+    st.markdown(
+        '<div style="padding:11px 14px;border:1px solid #7c633a;border-radius:10px;'
+        'background:rgba(87,64,28,.18);color:#e8c58e;font-size:.78rem;margin:8px 0 14px 0;">'
+        '<b>Geography policy:</b> store performance is shown at state level only. '
+        'Distribution-centre markers are synthetic scenario anchors, not real warehouses. '
+        'No real road distance or route is implied.</div>',
+        unsafe_allow_html=True,
+    )
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("M5 states represented", f"{len(states):,}")
+    k2.metric("Stores in selected sample", f"{int(states['store_count'].sum()):,}")
+    k3.metric("Store-item series", f"{int(states['series_count'].sum()):,}")
+    k4.metric("Historical demand", money(states["total_demand"].sum()), "units")
+
+    left, right = st.columns([1.7, 1])
+    with left:
+        card_title("State-level demand intensity", "Choropleth is aggregated by state; there are no precise store pins.")
+        fig = px.choropleth(
+            states,
+            locations="state_code",
+            locationmode="USA-states",
+            color="total_demand",
+            hover_name="state_name",
+            hover_data={
+                "state_code": True,
+                "store_count": True,
+                "series_count": True,
+                "item_count": True,
+                "total_demand": ":,.0f",
+                "average_daily_demand": ":,.1f",
+            },
+            color_continuous_scale=["#142b3c", "#267a91", "#65d1df"],
+            scope="usa",
+            labels={
+                "total_demand": "Historical demand",
+                "store_count": "Stores",
+                "series_count": "Series",
+                "item_count": "Items",
+                "average_daily_demand": "Avg daily demand",
+            },
+        )
+        # Synthetic distribution-centre scenario anchors are intentionally
+        # separate from the observed state-level store aggregation.
+        if not centres.empty:
+            fig.add_trace(go.Scattergeo(
+                lon=centres["longitude"],
+                lat=centres["latitude"],
+                text=centres["distribution_center_id"],
+                customdata=centres[["city_label", "state_name"]],
+                mode="markers+text",
+                textposition="top center",
+                name="Synthetic DC scenario anchors",
+                marker=dict(size=11, color="#f0b66b", symbol="diamond",
+                            line=dict(color="#fff0d6", width=1)),
+                hovertemplate="<b>%{text}</b><br>%{customdata[0]}<br>%{customdata[1]}<br>Synthetic only<extra></extra>",
+            ))
+        fig.update_geos(
+            showcountries=True, countrycolor="#40566b",
+            showland=True, landcolor="#0d1723",
+            showlakes=True, lakecolor="#0b1520",
+            bgcolor="rgba(0,0,0,0)",
+            subunitcolor="#33485c",
+        )
+        fig.update_layout(
+            template="plotly_dark", height=470,
+            margin=dict(l=0, r=0, t=18, b=0),
+            paper_bgcolor="rgba(0,0,0,0)",
+            geo=dict(bgcolor="rgba(0,0,0,0)"),
+            coloraxis_colorbar=dict(title="Demand", tickformat=",.2s"),
+            legend=dict(orientation="h", y=-.04, x=0),
+        )
+        st.plotly_chart(fig, use_container_width=True, config=PLOT_CONFIG)
+    with right:
+        card_title("State performance")
+        state_view = states.sort_values("total_demand", ascending=False).copy()
+        fig = px.bar(
+            state_view, x="state_code", y="total_demand",
+            color="total_demand",
+            color_continuous_scale=["#18384c", "#58cce1"],
+            hover_data=["store_count", "series_count", "item_count"],
+        )
+        fig.update_layout(coloraxis_showscale=False, xaxis_title="State", yaxis_title="Historical demand")
+        st.plotly_chart(plot_layout(fig, 300, legend=False), use_container_width=True, config=PLOT_CONFIG)
+        st.dataframe(
+            state_view[["state_name", "store_count", "series_count", "total_demand"]].rename(
+                columns={"state_name": "State", "store_count": "Stores",
+                         "series_count": "Series", "total_demand": "Demand"}
+            ).round(1),
+            use_container_width=True, hide_index=True,
+        )
+
+    st.subheader("Synthetic distribution-centre scenario")
+    st.caption("Each sample store is assigned to a synthetic scenario hub by state code. These assignments are illustrative, not observed retailer logistics.")
+    if not centres.empty:
+        centre_view = centres[["distribution_center_id", "city_label", "state_name"]].merge(
+            stores.groupby(["distribution_center_id", "state_name"], as_index=False).agg(
+                assigned_stores=("store_id", "nunique"),
+                assigned_series=("series_count", "sum"),
+                historical_demand=("total_demand", "sum"),
+            ),
+            on=["distribution_center_id", "state_name"],
+            how="left",
+        )
+        centre_view = centre_view.fillna(0)
+        c1, c2, c3 = st.columns(3)
+        for col, (_, row) in zip([c1, c2, c3], centre_view.iterrows()):
+            with col:
+                st.metric(str(row["distribution_center_id"]),
+                          f"{int(row['assigned_stores'])} stores",
+                          f"{int(row['assigned_series'])} series")
+                st.caption(f"{row['city_label']} · synthetic")
+        store_view = stores[[
+            "store_id", "state_name", "distribution_center_id",
+            "assignment_type", "series_count", "item_count",
+            "average_daily_demand", "total_demand",
+        ]].sort_values(["state_name", "store_id"])
+        st.dataframe(
+            store_view.rename(columns={
+                "store_id": "M5 store", "state_name": "State",
+                "distribution_center_id": "Scenario hub",
+                "assignment_type": "Assignment basis",
+                "series_count": "Series", "item_count": "Items",
+                "average_daily_demand": "Avg daily demand",
+                "total_demand": "Historical demand",
+            }).round(1),
+            use_container_width=True, hide_index=True,
+        )
+
+    with st.expander("Geography and data provenance"):
+        st.json(metadata)
+        st.markdown(
+            "State-level geography is approximate. The distribution-centre points are generated scenario anchors "
+            "near representative cities. They are not real facilities, and the current page does not estimate "
+            "road distance, freight cost, or real service territories."
+        )
+
+
 def render_scenario(store: str, item: str, service_level: float, lead_time: int) -> None:
     st.markdown('<div class="eyebrow">WHAT-IF MODELLING / DECISION SUPPORT</div>', unsafe_allow_html=True)
     st.header("Scenario studio")
@@ -714,7 +883,7 @@ with st.sidebar:
     st.divider()
     page = st.radio(
         "WORKSPACE",
-        ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Business Impact", "Scenario Studio"],
+        ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio"],
         label_visibility="collapsed",
     )
     service_level = st.slider("Target service level", .80, .99, .90, .01, format="%.2f")
