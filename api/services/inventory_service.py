@@ -17,6 +17,7 @@ class InventoryService:
         service_level,
         lead_time_days,
         current_inventory,
+        include_model_metadata: bool = True,
     ):
 
         history = self.store.load_series(
@@ -79,17 +80,15 @@ class InventoryService:
             else "HOLD"
         )
 
-        model_name = "unavailable"
+        # Scenario calculations do not need model metadata. Skipping this
+        # lookup avoids a model-artifact access on the first what-if request.
+        model_name = "not_required"
 
-        try:
-
-            model_name = self.store.load_model()[
-                "model_name"
-            ]
-
-        except FileNotFoundError:
-
-            pass
+        if include_model_metadata:
+            try:
+                model_name = self.store.load_model()["model_name"]
+            except FileNotFoundError:
+                pass
 
         return {
             "mean_daily_demand":
