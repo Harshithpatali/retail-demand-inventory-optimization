@@ -51,7 +51,8 @@ def _eda_payload(store_id: str, item_id: str):
     prices = pd.to_numeric(frame.get("sell_price"), errors="coerce") if "sell_price" in frame else pd.Series(dtype=float)
     price_corr = None
     if len(prices) == len(demand) and prices.notna().sum() > 2 and prices.nunique(dropna=True) > 1:
-        price_corr = float(pd.concat([demand, prices], axis=1).corr().iloc[0, 1])
+        correlation = pd.concat([demand, prices], axis=1).corr().iloc[0, 1]
+        price_corr = None if pd.isna(correlation) or not np.isfinite(correlation) else float(correlation)
 
     def safe_number(value):
         return None if pd.isna(value) or not np.isfinite(value) else float(value)
