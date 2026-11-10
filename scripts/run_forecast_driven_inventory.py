@@ -1,10 +1,9 @@
-"""Compare historical and forecast-driven inventory policies on a held-out period.
+"""Compare historical and forecast-driven inventory policies on held-out demand.
 
-Forecast rows use the global model's one-step-ahead predictions with lag features
-available at each date. This is a rolling operational interpretation: prior-day
-actual demand is observable before the next day's order review. Policies are
-selected using validation forecasts/residuals only; test demand is used solely
-inside the simulator for scoring.
+Validation is split chronologically: the first half calibrates residual
+uncertainty; the second half selects the inventory policy. The selected target
+is frozen before the held-out test period. Forecast rows use one-step-ahead
+features, so each prediction assumes prior-day demand is observable.
 """
 from __future__ import annotations
 
@@ -20,6 +19,18 @@ from src.simulation.simulator_metrics import summarize_simulation
 from src.utils.config import ROOT, load_yaml
 
 
+def run_simulation(period, policy, mean_daily, inv_cfg, lead_time):
+    return simulate(
+        period[["date", "demand"]], policy,
+        initial_inventory=max(mean_daily * lead_time, float(inv_cfg["min_order_quantity"])),
+        lead_time_days=lead_time,
+        holding_cost_per_unit_day=float(inv_cfg["holding_cost_per_unit_day"]),
+        ordering_cost_per_order=float(inv_cfg["ordering_cost_per_order"]),
+        stockout_cost_per_unit=float(inv_cfg["stockout_cost_per_unit"]),
+        review_start_date=period.date.min(),
+    )
+
+
 def main():
     model_cfg = load_yaml("model_config.yaml")
     inv_cfg = load_yaml("inventory_config.yaml")
@@ -33,31 +44,35 @@ def main():
     test_start = max_date - pd.Timedelta(days=int(model_cfg["test_days"]) - 1)
     val_start = test_start - pd.Timedelta(days=int(model_cfg["validation_days"]))
     train = frame[frame.date < val_start]
-    val = frame[(frame.date >= val_start) & (frame.date < test_start)]
-    test = frame[frame.date >= test_start]
+    val = frame[(frame.date >= val_start) & (frame.date < test_start)].copy()
+    test = frame[frame.date >= test_start].copy()
     bundle = joblib.load(model_path)
-    val = val.copy()
-    test = test.copy()
     val["prediction"] = np.maximum(0.0, bundle["model"].predict(val[MODEL_FEATURES]))
     test["prediction"] = np.maximum(0.0, bundle["model"].predict(test[MODEL_FEATURES]))
     val["residual"] = val.demand.to_numpy() - val.prediction.to_numpy()
 
-    rows = []
-    policy_rows = []
+    rows, policy_rows = [], []
     for sid, test_group in test.groupby("id", observed=True):
         vg = val[val.id == sid].sort_values("date")
         tg = test_group.sort_values("date")
-        if vg.empty or tg.empty:
-            continue
-        residuals = vg.residual.to_numpy()
-        forecast = tg.prediction.to_numpy()
-        lead = int(inv_cfg["default_lead_time_days"])
-        max_review = max(map(int, inv_cfg["review_periods"]))
-        max_protection = lead + max_review
-        if len(forecast) < max_protection:
+        if len(vg) < 20 or tg.empty:
             continue
 
-        hist = train[train.id == sid].sort_values("date").tail(int(inv_cfg["demand_window_days"])).demand
+        # Chronological split prevents reusing calibration errors for policy selection.
+        midpoint = len(vg) // 2
+        calibration = vg.iloc[:midpoint]
+        selection = vg.iloc[midpoint:]
+        residuals = calibration.residual.to_numpy()
+        selection_forecast = selection.prediction.to_numpy()
+        lead = int(inv_cfg["default_lead_time_days"])
+        feasible_reviews = [int(rp) for rp in inv_cfg["review_periods"]
+                            if lead + int(rp) <= len(selection)]
+        if not feasible_reviews:
+            continue
+
+        hist = train[train.id == sid].sort_values("date").tail(
+            int(inv_cfg["demand_window_days"])
+        ).demand
         hist_mean = max(0.0, float(hist.mean()))
         hist_std = float(hist.std(ddof=1)) if len(hist) > 1 else 0.0
         baseline = calculate_policy(InventoryPolicy(
@@ -69,61 +84,28 @@ def main():
 
         candidates = []
         for sl in inv_cfg["service_levels"]:
-            for rp in inv_cfg["review_periods"]:
+            for rp in feasible_reviews:
                 candidate = calculate_forecast_target(
-                    forecast, residuals, lead, int(rp), float(sl),
+                    selection_forecast, residuals, lead, rp, float(sl),
                     float(inv_cfg["min_order_quantity"]), float(inv_cfg["max_order_quantity"])
                 )
-                # Select on validation only: use validation residual blocks and
-                # the first protection-period validation forecast.
-                val_forecast = vg.prediction.to_numpy()
-                if len(val_forecast) < lead + int(rp):
-                    continue
-                candidate_val = calculate_forecast_target(
-                    val_forecast, residuals, lead, int(rp), float(sl),
-                    float(inv_cfg["min_order_quantity"]), float(inv_cfg["max_order_quantity"])
-                )
-                val_sim = simulate(
-                    vg[["date", "demand"]], candidate_val,
-                    initial_inventory=max(hist_mean * lead, float(inv_cfg["min_order_quantity"])),
-                    lead_time_days=lead,
-                    holding_cost_per_unit_day=float(inv_cfg["holding_cost_per_unit_day"]),
-                    ordering_cost_per_order=float(inv_cfg["ordering_cost_per_order"]),
-                    stockout_cost_per_unit=float(inv_cfg["stockout_cost_per_unit"]),
-                    review_start_date=vg.date.min()
-                )
-                candidates.append((float(val_sim.total_cost.sum()), candidate_val))
-        if not candidates:
-            continue
-        _, selected = min(candidates, key=lambda x: x[0])
-        # Rebuild the selected policy target from the test-period forecast,
-        # retaining only the service/review settings selected on validation.
-        selected = calculate_forecast_target(
-            forecast, residuals, lead, selected["review_period_days"],
-            selected["service_level"], float(inv_cfg["min_order_quantity"]),
-            float(inv_cfg["max_order_quantity"])
-        )
+                selection_sim = run_simulation(selection, candidate, hist_mean, inv_cfg, lead)
+                candidates.append((float(selection_sim.total_cost.sum()), candidate))
+        _, selected = min(candidates, key=lambda pair: (
+            pair[0], -pair[1]["service_level"], pair[1]["review_period_days"]
+        ))
 
-        def run(policy):
-            return simulate(
-                tg[["date", "demand"]], policy,
-                initial_inventory=max(hist_mean * lead, float(inv_cfg["min_order_quantity"])),
-                lead_time_days=lead,
-                holding_cost_per_unit_day=float(inv_cfg["holding_cost_per_unit_day"]),
-                ordering_cost_per_order=float(inv_cfg["ordering_cost_per_order"]),
-                stockout_cost_per_unit=float(inv_cfg["stockout_cost_per_unit"]),
-                review_start_date=tg.date.min()
-            )
-        base_result = run(baseline)
-        opt_result = run(selected)
+        # Freeze the validation-selected policy; test demand is used only for scoring.
+        baseline_test = run_simulation(tg, baseline, hist_mean, inv_cfg, lead)
+        optimized_test = run_simulation(tg, selected, hist_mean, inv_cfg, lead)
         rows.extend([
-            {"id": str(sid), "policy": "historical_baseline", **summarize_simulation(base_result)},
-            {"id": str(sid), "policy": "forecast_driven", **summarize_simulation(opt_result)}
+            {"id": str(sid), "policy": "historical_baseline", **summarize_simulation(baseline_test)},
+            {"id": str(sid), "policy": "forecast_driven", **summarize_simulation(optimized_test)},
         ])
         policy_rows.append({"id": str(sid), **selected})
 
     if not rows:
-        raise RuntimeError("No series had enough forecast horizon for the requested protection periods.")
+        raise RuntimeError("No series had sufficient calibration, selection, and test observations.")
     output_dir = ROOT / "reports/tables"
     output_dir.mkdir(parents=True, exist_ok=True)
     result = pd.DataFrame(rows)
@@ -131,8 +113,12 @@ def main():
     result.groupby("policy").mean(numeric_only=True).to_csv(
         output_dir / "forecast_driven_inventory_summary.csv"
     )
-    pd.DataFrame(policy_rows).to_csv(output_dir / "forecast_driven_selected_policies.csv", index=False)
-    print(result.groupby("policy")[["total_cost", "stockout_units", "average_inventory", "fill_rate"]].mean())
+    pd.DataFrame(policy_rows).to_csv(
+        output_dir / "forecast_driven_selected_policies.csv", index=False
+    )
+    print(result.groupby("policy")[[
+        "total_cost", "stockout_units", "average_inventory", "fill_rate"
+    ]].mean())
 
 
 if __name__ == "__main__":

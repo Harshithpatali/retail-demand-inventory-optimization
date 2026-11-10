@@ -2,34 +2,35 @@
 
 ## New evaluation utilities
 
-- `scripts/run_rolling_backtest.py`: chronological 28-day rolling-origin evaluation.
-- `scripts/run_advanced_evaluation.py`: adds Croston SBA comparisons and empirical interval coverage/width diagnostics.
-- `scripts/run_forecast_driven_inventory.py`: selects inventory policies on validation forecasts and residuals, then evaluates on the held-out test period.
+- `scripts/run_rolling_backtest.py`: chronological multi-origin forecast evaluation.
+- `scripts/run_advanced_evaluation.py`: Croston SBA comparison and empirical interval coverage/width diagnostics.
+- `scripts/run_forecast_driven_inventory.py`: separates validation residual calibration from policy selection, freezes the selected policy, and evaluates it on held-out test demand.
 - `src/uncertainty/conformal.py`: finite-sample split-conformal residual quantiles and contiguous block-error calibration.
-- `src/inventory/forecast_policy.py`: computes the periodic-review target from forecast demand over lead time + review period plus an empirical block-residual quantile.
+- `src/inventory/forecast_policy.py`: computes periodic-review targets from forecast demand over lead time plus review period and empirical block-residual quantiles.
 
 ## Intermittent demand
 
-Croston's method and the Syntetos-Boylan Approximation (SBA) are added as baselines. They should be compared by item-store demand segment; no assumption is made that they outperform the global model.
+Croston's method and the Syntetos-Boylan Approximation (SBA) are additional baselines. Compare them by item-store demand segment; neither is assumed to outperform the global model.
 
 ## Conformal uncertainty
 
-Absolute out-of-sample residuals are calibrated using a finite-sample order statistic. For inventory, contiguous residuals are aggregated over the protection period before computing an empirical quantile. This is more decision-relevant than applying a single daily residual standard deviation to every forecast horizon.
+Absolute out-of-sample residuals are calibrated using a finite-sample order statistic. For inventory, contiguous residuals are aggregated over the protection period before computing an empirical quantile. This is more decision-relevant than applying a single daily residual standard deviation to every horizon.
 
-The classical split-conformal coverage guarantee assumes exchangeability. Retail time series exhibit dependence and drift, so empirical coverage and interval width must be measured on later chronological data and rolling origins. The reported calibration is diagnostic, not proof of a universal coverage guarantee.
+Classical split-conformal coverage assumes exchangeability. Retail time series exhibit dependence and drift, so empirical coverage and interval width must be measured on later chronological data and rolling origins. The calibration report is diagnostic, not proof of a universal coverage guarantee.
 
 ## Forecast-driven inventory
 
-The new comparison evaluates:
-1. A historical-statistics baseline.
-2. A forecast-driven policy using validation-only policy selection and residual calibration.
-3. A separate held-out test simulation using actual test demand only for scoring.
+The forecast-driven comparison splits the 28-day validation window chronologically:
+1. The first half calibrates residual uncertainty.
+2. The second half selects service level and review period using simulated cost.
+3. The selected policy is frozen before the held-out test period.
+4. Test demand is used only by the simulator to score the frozen policy.
 
-The forecast rows are one-step-ahead predictions using lag features available at each date. This matches a rolling operational setting in which yesterday's demand is observed before today's replenishment decision. It is not a fixed-origin multi-step forecast.
+Forecast rows are one-step-ahead predictions with lag features available at each date. This represents rolling replenishment decisions where yesterday's demand is observed before today's review. It is not a fixed-origin multi-week forecast. Review periods are limited to those whose protection period fits in the policy-selection window.
 
 ## Rolling-origin backtesting
 
-Run `python -m scripts.run_rolling_backtest` to create `reports/tables/rolling_origin_backtest.csv`. The current helper uses chronological origins and non-overlapping evaluation windows. For deployment decisions, add more origins and compare seasonal regimes where sufficient history exists.
+Run `python -m scripts.run_rolling_backtest` to create `reports/tables/rolling_origin_backtest.csv`. The current implementation evaluates successive chronological windows using the trained validation model. It does not refit the model at every origin; treat it as a fixed-model temporal robustness check rather than full retraining backtesting.
 
 ## Interpretation
 
