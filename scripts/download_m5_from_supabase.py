@@ -166,8 +166,6 @@ def main() -> None:
         extracted = _extract_csvs(archive_path, RAW_DIR)
         names = {path.name for path in extracted}
         missing = REQUIRED - names
-        if not (SALES_OPTIONS & names):
-            missing.add("sales_train_validation.csv or sales_train_evaluation.csv")
         if missing:
             raise RuntimeError(
                 "Archive is missing required M5 CSV file(s): "
