@@ -1,0 +1,87 @@
+name: process-m5-source-data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: process-m5-source-data
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install data pipeline dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt matplotlib==3.9.3
+
+      - name: Download and validate original M5 archive from private Supabase Storage
+        env:
+          SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: \${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_BUCKET: m5-raw-data
+          M5_ZIP_PATH: \${{ secrets.M5_ZIP_PATH }}
+        run: python -m scripts.download_m5_from_supabase
+
+      - name: Rebuild cleaned and feature datasets from original source
+        run: |
+          python -m scripts.prepare_data
+          python -m scripts.build_features
+
+      - name: Validate generated datasets
+        run: |
+          python - <<'PY'
+          import json
+          import pandas as pd
+          from pathlib import Path
+
+          cleaned_path = Path("data/interim/cleaned_sales.parquet")
+          features_path = Path("data/processed/forecast_features.parquet")
+          report_path = Path("data/interim/validation_report.json")
+          for path in (cleaned_path, features_path, report_path):
+              if not path.is_file() or path.stat().st_size == 0:
+                  raise SystemExit(f"Missing or empty output: {path}")
+
+          cleaned = pd.read_parquet(cleaned_path)
+          features = pd.read_parquet(features_path)
+          report = json.loads(report_path.read_text())
+          required = {"id", "date", "demand"}
+          if not required.issubset(cleaned.columns):
+              raise SystemExit(f"Cleaned data missing columns: {required - set(cleaned.columns)}")
+          if not required.issubset(features.columns):
+              raise SystemExit(f"Feature data missing columns: {required - set(features.columns)}")
+          if cleaned.empty or features.empty:
+              raise SystemExit("Generated datasets must not be empty.")
+          print("Cleaned panel:", cleaned.shape, "series:", cleaned.id.nunique())
+          print("Feature panel:", features.shape, "series:", features.id.nunique())
+          print("Validation report keys:", sorted(report))
+          print("Feature date range:", features.date.min(), "to", features.date.max())
+          PY
+
+      - name: Commit processed data to main
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "data: rebuild M5 processed datasets from original source"
+          branch: main
+          file_pattern: |
+            data/interim/cleaned_sales.parquet
+            data/interim/validation_report.json
+            data/processed/forecast_features.parquet
