@@ -34,11 +34,11 @@ jobs:
 
       - name: Download and validate original M5 archive from private Supabase Storage
         env:
-          SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: \${{ secrets.SUPABASE_SECRET_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_BUCKET: m5-raw-data
-          M5_ZIP_PATH: \${{ secrets.M5_ZIP_PATH }}
+          M5_ZIP_PATH: ${{ secrets.M5_ZIP_PATH }}
         run: python -m scripts.download_m5_from_supabase
 
       - name: Rebuild cleaned and feature datasets from original source
