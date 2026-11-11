@@ -20,3 +20,5 @@ lightgbm:
   min_child_samples: 30
   subsample: 0.85
   colsample_bytree: 0.85
+# Expanding-window refit evaluation: four successive, non-overlapping test windows.
+rolling_origins: 4
