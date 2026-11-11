@@ -668,14 +668,13 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
         card_title("Stock position gauge")
         gauge_value = float(current)
         gauge_max = max(reorder * 1.5, gauge_value * 1.2, 1)
+        # Keep the numeric readout in Streamlit rather than inside Plotly.
+        # Plotly can preserve the old Indicator number in some mobile browser
+        # update paths even while the gauge needle receives the new value.
+        st.metric("Current stock", f"{gauge_value:,.1f} units")
         fig = go.Figure(go.Indicator(
-            mode="gauge+number",
+            mode="gauge",
             value=gauge_value,
-            number={
-                "font": {"color": "#e7eef7", "size": 54},
-                "valueformat": ",.1f",
-            },
-            title={"text": "Current stock", "font": {"color": "#91a8bf", "size": 12}},
             gauge={
                 "axis": {"range": [0, gauge_max]},
                 "bar": {"color": status_color},
@@ -695,7 +694,7 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
             config=PLOT_CONFIG,
             key=f"stock_gauge_{store}_{item}_{gauge_value:.2f}_{reorder:.2f}",
         )
-        st.caption(f"Live gauge value: **{gauge_value:,.1f} units** · Reorder threshold: **{reorder:,.1f} units**")
+        st.caption(f"Reorder threshold: **{reorder:,.1f} units** · Gauge needle represents current stock.")
     with right:
         card_title("Reorder point composition")
         fig = go.Figure(go.Waterfall(
