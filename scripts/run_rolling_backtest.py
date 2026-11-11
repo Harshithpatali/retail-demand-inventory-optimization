@@ -27,24 +27,34 @@ MODELS = ("xgboost", "lightgbm")
 
 
 def _predict_baselines(train: pd.DataFrame, test: pd.DataFrame) -> dict[str, np.ndarray]:
-    """Create strictly historical per-series baseline forecasts in test row order."""
+    """Generate fair rolling one-step baseline forecasts in test row order.
+
+    Each date is forecast using only history available before that date. Once
+    the prediction is made, the observed demand is appended before forecasting
+    the next date, matching the information set used by lagged ML features.
+    """
     predictions = {name: np.zeros(len(test), dtype=float) for name in BASELINES}
     test_positions = pd.Series(np.arange(len(test)), index=test.index)
     history = {
-        str(series_id): group.sort_values("date")["demand"].astype(float)
+        str(series_id): group.sort_values("date")["demand"].astype(float).tolist()
         for series_id, group in train.groupby("id", observed=True, sort=False)
     }
+
     for series_id, rows in test.groupby("id", observed=True, sort=False):
         key = str(series_id)
-        hist = history.get(key, pd.Series(dtype=float))
+        hist = history.get(key, []).copy()
         ordered = rows.sort_values("date")
         positions = test_positions.loc[ordered.index].to_numpy(dtype=int)
-        horizon = len(ordered)
-        predictions["naive"][positions] = naive_forecast(hist, horizon)
-        predictions["seasonal_naive"][positions] = seasonal_naive_forecast(hist, horizon)
-        predictions["moving_average"][positions] = moving_average_forecast(hist, horizon)
-    return predictions
 
+        for position, actual in zip(positions, ordered["demand"].astype(float).to_numpy()):
+            history_series = pd.Series(hist, dtype=float)
+            predictions["naive"][position] = naive_forecast(history_series, 1)[0]
+            predictions["seasonal_naive"][position] = seasonal_naive_forecast(history_series, 1)[0]
+            predictions["moving_average"][position] = moving_average_forecast(history_series, 1)[0]
+            # Reveal actual demand only after the current date has been forecast.
+            hist.append(float(actual))
+
+    return predictions
 
 def _series_wape(frame: pd.DataFrame, prediction_col: str) -> pd.Series:
     grouped = frame.assign(
