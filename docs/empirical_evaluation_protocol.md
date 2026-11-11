@@ -6,7 +6,7 @@ The live Streamlit UI, map and inventory gauge have been visually checked by the
 ## Reproducible experiments
 The `empirical-evaluation` GitHub Actions workflow runs against the committed processed M5 feature panel and validation model. It creates:
 
-- `rolling_origin_refit_by_fold.csv`: four successive, non-overlapping 28-day test windows. At each origin, XGBoost and LightGBM are newly trained using only rows strictly before that origin; naive, seasonal-naive and moving-average forecasts use only each series' pre-origin history.
+- `rolling_origin_refit_by_fold.csv`: four successive, non-overlapping 28-day test windows. At each origin, XGBoost and LightGBM are newly trained using only rows strictly before that origin. All five methods are scored as rolling one-step-ahead forecasts: each date is predicted from information available before that date, then its observed demand is added to history for the next date.
 - `rolling_origin_refit_summary.csv`: pooled out-of-fold MAE, RMSE and WAPE across all rolling test windows and all five models.
 - `rolling_origin_paired_comparisons.csv`: paired series-cluster bootstrap comparison of XGBoost WAPE against LightGBM and each baseline, with 95% percentile intervals and a two-sided bootstrap sign test. The resampling unit is the item-store series, not individual daily rows, to avoid treating repeated observations within a series as independent.
 
@@ -21,8 +21,8 @@ The older fixed-model temporal robustness results remain in the historical evalu
 The sensitivity experiment uses a deterministic sample of up to 30 item-store series spanning the training-volume distribution. It varies lead time (1, 3, 5, 7, 10, 14, 21 and 30 days), target service level (80%, 85%, 90%, 95% and 97%), and five transparent cost scenarios. For each lead time and cost scenario, candidate service levels are compared with an 80% target policy using the same test demand. This isolates service-level policy sensitivity; it does not claim that the target fill rate is achieved.
 
 ## Statistical cautions
-- The rolling-origin script uses a fixed saved model; model retraining at each origin is not performed.
-- The model and Croston SBA are compared as rolling one-step-ahead predictions. This is not a fixed-origin multi-week forecast competition.
+- XGBoost and LightGBM are refitted independently at each of the four origins. The experiment is expanding-window refit, not a single fixed model reused across folds.
+- All models and simple baselines in the rolling-origin comparison use rolling one-step-ahead information sets. This is not a fixed-origin multi-week forecast competition. Croston SBA is evaluated in a separate rolling one-step-ahead experiment.
 - Conformal intervals use chronological validation residuals. Time-series dependence and distribution drift invalidate a blanket exchangeability guarantee; empirical coverage is reported as a diagnostic.
 - Inventory results are simulations, not realized retailer savings. Holding, ordering and stockout costs are assumptions.
 - The sensitivity sample is capped at 30 series for bounded runtime. Results should be described as a sample-level robustness analysis, not a full-panel estimate.
