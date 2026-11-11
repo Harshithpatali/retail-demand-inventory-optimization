@@ -75,8 +75,12 @@ def paired_cluster_bootstrap(
     draws = rng.integers(0, len(delta), size=(n_bootstrap, len(delta)))
     boot = delta[draws].mean(axis=1) * 100
     observed = float(delta.mean() * 100)
+    # Two-sided bootstrap sign test around the null of zero mean difference.
     # Add-one correction avoids a zero Monte Carlo p-value.
-    p_value = (1 + np.count_nonzero(np.abs(boot) >= abs(observed))) / (n_bootstrap + 1)
+    p_value = min(1.0, 2.0 * min(
+        (1 + np.count_nonzero(boot <= 0)) / (n_bootstrap + 1),
+        (1 + np.count_nonzero(boot >= 0)) / (n_bootstrap + 1),
+    ))
     low, high = np.quantile(boot, [0.025, 0.975])
     return {
         "series_count": int(len(delta)),
