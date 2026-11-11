@@ -105,6 +105,7 @@ def load_forecast(store_id: str, item_id: str, horizon: int) -> dict[str, Any]:
 
 
 @st.cache_data(ttl=120, max_entries=512, show_spinner=False)
+@st.cache_data(ttl=60, max_entries=256, show_spinner=False)
 def load_inventory(
     store_id: str, item_id: str, service_level: float,
     lead_time: int, current_inventory: float,
@@ -116,7 +117,7 @@ def load_inventory(
             "service_level": service_level, "lead_time_days": lead_time,
             "current_inventory": current_inventory,
         },
-        timeout=8.0,
+        timeout=60.0,
     )
     response.raise_for_status()
     return response.json()
