@@ -345,9 +345,30 @@ def render_forecast(history: pd.DataFrame, store: str, item: str) -> None:
 
 
 def render_inventory(history: pd.DataFrame, store: str, item: str,
-                     service_level: float, lead_time: int) -> None:
+                     service_level: float, lead_time: int,
+                     available_pairs: pd.DataFrame) -> None:
     st.markdown('<div class="eyebrow">DECISION SCIENCE / PERIODIC REVIEW</div>', unsafe_allow_html=True)
     st.header("Inventory control tower")
+    st.caption("Choose a store and SKU here; inventory metrics and the geographic context update for that selection.")
+    selector_store_col, selector_item_col = st.columns(2)
+    available_stores = sorted(available_pairs["store_id"].astype(str).unique().tolist())
+    selected_store = selector_store_col.selectbox(
+        "Select store", available_stores,
+        index=available_stores.index(store) if store in available_stores else 0,
+        key="inventory_store_selector",
+    )
+    available_items = sorted(
+        available_pairs.loc[
+            available_pairs["store_id"].astype(str) == selected_store, "item_id"
+        ].astype(str).unique().tolist()
+    )
+    selected_item = selector_item_col.selectbox(
+        "Select SKU / product", available_items,
+        index=available_items.index(item) if item in available_items else 0,
+        key=f"inventory_item_selector_{selected_store}",
+    )
+    store, item = selected_store, selected_item
+
     state_names = {
         "CA": "California",
         "TX": "Texas",
@@ -369,7 +390,59 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
         f'<div style="font-size:.72rem;color:#91a4b8">M5 item identifier</div></div></div>',
         unsafe_allow_html=True,
     )
-    current = st.number_input("On-hand inventory (units)", min_value=0.0, value=20.0, step=1.0)
+    # Geographic context for the selected M5 store. Store location is only
+    # known at state level; the hub pins are explicitly synthetic scenarios.
+    try:
+        network_payload = load_network()
+        network_states = pd.DataFrame(network_payload.get("states", []))
+        network_centres = pd.DataFrame(network_payload.get("distribution_centers", []))
+        if not network_states.empty:
+            network_states["selected_state_demand"] = np.where(
+                network_states["state_code"].astype(str) == state_code,
+                network_states["total_demand"], 0.0,
+            )
+            card_title(
+                "Selected store geography",
+                f"{store} is represented at state level ({state_name}); no precise store address is available.",
+            )
+            geo_fig = px.choropleth(
+                network_states,
+                locations="state_code",
+                locationmode="USA-states",
+                color="selected_state_demand",
+                hover_name="state_name",
+                hover_data=["store_count", "series_count", "total_demand"],
+                color_continuous_scale=["#172638", "#55c8df"],
+                scope="usa",
+                labels={"selected_state_demand": "Selected-state demand"},
+            )
+            if not network_centres.empty:
+                geo_fig.add_trace(go.Scattergeo(
+                    lon=network_centres["longitude"],
+                    lat=network_centres["latitude"],
+                    text=network_centres["distribution_center_id"],
+                    mode="markers",
+                    name="Synthetic DC anchors",
+                    marker=dict(size=9, color="#f0b66b", symbol="diamond"),
+                    hovertemplate="%{text}<br>Synthetic scenario location<extra></extra>",
+                ))
+            geo_fig.update_geos(
+                showcountries=True, showland=True, landcolor="#0d1723",
+                subunitcolor="#40566b", bgcolor="rgba(0,0,0,0)",
+            )
+            geo_fig.update_layout(
+                template="plotly_dark", height=390,
+                margin=dict(l=0, r=0, t=10, b=0),
+                paper_bgcolor="rgba(0,0,0,0)",
+                geo=dict(bgcolor="rgba(0,0,0,0)"),
+                coloraxis_colorbar=dict(title="Demand"),
+            )
+            st.plotly_chart(geo_fig, use_container_width=True, config=PLOT_CONFIG)
+            st.caption("State-level demand is observed M5 data. Diamond markers are synthetic planning anchors, not verified warehouses.")
+    except Exception as geo_exc:
+        st.warning(f"Geographic context is temporarily unavailable: {geo_exc}")
+
+    current = st.number_input("On-hand inventory (units)", min_value=0.0, value=20.0, step=1.0, key="inventory_on_hand")
     try:
         with st.spinner("Calculating replenishment policy…"):
             result = load_inventory(store, item, service_level, lead_time, current)
@@ -944,7 +1017,7 @@ elif page == "Full EDA":
 elif page == "Demand Forecast":
     render_forecast(history, store, item)
 elif page == "Inventory Control":
-    render_inventory(history, store, item, service_level, lead_time)
+    render_inventory(history, store, item, service_level, lead_time, pairs)
 elif page == "Network Intelligence":
     render_network_intelligence()
 elif page == "Business Impact":
