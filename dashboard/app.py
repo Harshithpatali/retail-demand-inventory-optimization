@@ -630,7 +630,14 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
     except Exception as geo_exc:
         st.warning(f"Geographic context is temporarily unavailable: {geo_exc}")
 
-    current = st.number_input("On-hand inventory (units)", min_value=0.0, value=20.0, step=1.0, key="inventory_on_hand")
+    current = st.number_input(
+        "On-hand inventory (units)",
+        min_value=0.0,
+        value=20.0,
+        step=1.0,
+        key=f"inventory_on_hand_{store}_{item}",
+        help="The live stock quantity used by the replenishment decision and gauge.",
+    )
     try:
         with st.spinner("Calculating replenishment policy…"):
             result = load_inventory(store, item, service_level, lead_time, current)
@@ -659,22 +666,36 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
     left, right = st.columns([1, 1.35])
     with left:
         card_title("Stock position gauge")
+        gauge_value = float(current)
+        gauge_max = max(reorder * 1.5, gauge_value * 1.2, 1)
         fig = go.Figure(go.Indicator(
-            mode="gauge+number", value=float(current),
-            number={"font": {"color": "#e7eef7"}},
+            mode="gauge+number",
+            value=gauge_value,
+            number={
+                "font": {"color": "#e7eef7", "size": 54},
+                "valueformat": ",.1f",
+            },
+            title={"text": "Current stock", "font": {"color": "#91a8bf", "size": 12}},
             gauge={
-                "axis": {"range": [0, max(reorder * 1.5, current * 1.2, 1)]},
+                "axis": {"range": [0, gauge_max]},
                 "bar": {"color": status_color},
                 "bgcolor": "#152233",
                 "bordercolor": "#304459",
                 "steps": [
                     {"range": [0, reorder], "color": "rgba(255,116,124,.16)"},
-                    {"range": [reorder, max(reorder * 1.5, current * 1.2, 1)], "color": "rgba(87,214,141,.12)"},
+                    {"range": [reorder, gauge_max], "color": "rgba(87,214,141,.12)"},
                 ],
                 "threshold": {"line": {"color": "#f0b66b", "width": 3}, "value": reorder},
             },
         ))
-        st.plotly_chart(plot_layout(fig, 280, legend=False), use_container_width=True, config=PLOT_CONFIG)
+        fig.update_layout(uirevision=f"stock-gauge-{store}-{item}-{gauge_value:.2f}-{reorder:.2f}")
+        st.plotly_chart(
+            plot_layout(fig, 280, legend=False),
+            use_container_width=True,
+            config=PLOT_CONFIG,
+            key=f"stock_gauge_{store}_{item}_{gauge_value:.2f}_{reorder:.2f}",
+        )
+        st.caption(f"Live gauge value: **{gauge_value:,.1f} units** · Reorder threshold: **{reorder:,.1f} units**")
     with right:
         card_title("Reorder point composition")
         fig = go.Figure(go.Waterfall(
