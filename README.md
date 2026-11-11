@@ -56,7 +56,7 @@ python -m scripts.build_business_impact
 pytest -q
 ```
 
-Raw M5 source files are not committed. A bounded processed feature panel, model artifacts and demo lookup artifacts are committed to support the hosted application and reproducible evaluation. Regenerate them when changing the data or model. See the configuration files for the subset size, split windows, inventory costs, lead time, review periods, MOQ, and maximum order quantity.
+Raw M5 source files are stored privately in Supabase Storage and are not committed to Git. The manual `process-m5-source-data` GitHub Actions workflow downloads the private archive, validates and extracts the five original competition CSVs, rebuilds the cleaned panel and feature panel, validates the outputs, and commits only the processed Parquet files and validation report under `data/`. Configure the repository Actions secrets `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (or legacy `SUPABASE_SERVICE_ROLE_KEY`). The bucket defaults to `m5-raw-data`; if it contains multiple ZIP files, add the optional `M5_ZIP_PATH` secret with the exact object path. See `data/README.md` for details. A bounded processed feature panel, model artifacts and demo lookup artifacts support the hosted application and reproducible evaluation. See the configuration files for the subset size, split windows, inventory costs, lead time, review periods, MOQ, and maximum order quantity.
 
 ## Important limitations
 
