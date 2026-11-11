@@ -698,11 +698,14 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
         st.caption(f"Reorder threshold: **{reorder:,.1f} units** · Gauge needle represents current stock.")
     with right:
         card_title("Reorder point composition")
+        lead_demand = float(result["lead_time_demand"])
+        review_demand = float(result["mean_daily_demand"]) * int(result["review_period_days"])
+        safety = float(result["safety_stock"])
         fig = go.Figure(go.Waterfall(
-            x=["Lead-time demand", "Safety stock", "Reorder point"],
-            y=[float(result["lead_time_demand"]), float(result["safety_stock"]), 0],
-            measure=["relative", "relative", "total"],
-            text=[money(result["lead_time_demand"]), money(result["safety_stock"]), money(reorder)],
+            x=["Lead-time demand", "Review-period demand", "Safety stock", "Reorder point"],
+            y=[lead_demand, review_demand, safety, 0],
+            measure=["relative", "relative", "relative", "total"],
+            text=[money(lead_demand), money(review_demand), money(safety), money(reorder)],
             textposition="outside",
             connector={"line": {"color": "#53687d"}},
             increasing={"marker": {"color": "#55c8df"}},
