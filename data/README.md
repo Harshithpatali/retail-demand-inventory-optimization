@@ -11,10 +11,12 @@ The manual GitHub Actions workflow
 
 1. Authenticates to Supabase Storage using repository Actions secrets.
 2. Finds the single ZIP in `m5-raw-data`, or uses the optional `M5_ZIP_PATH` secret.
-3. Verifies ZIP integrity and extracts the five source CSV files into the runner's
-   ignored `data/raw/` directory.
-4. Runs `scripts.prepare_data` and `scripts.build_features`.
-5. Validates the generated outputs and commits only the processed data to `main`.
+3. Verifies ZIP integrity but extracts only one sales matrix (evaluation, or validation
+   as fallback), `calendar.csv` and `sell_prices.csv`. It skips
+   `sample_submission.csv` and the unused second sales matrix.
+4. Runs `scripts.prepare_data` and `scripts.build_features` to produce Parquet.
+5. Deletes the temporary ZIP and raw CSVs, validates the generated outputs, and commits
+   only the processed Parquet datasets and validation report to `main`.
 
 Required GitHub repository secrets:
 
@@ -30,15 +32,18 @@ Optional secret:
 Never put Supabase credentials in source files, Streamlit code, or committed
 configuration. The bucket should remain private.
 
-## Source CSV files
+## Source tables used
 
-The complete archive must contain these five files:
+Only three source tables are needed for this workflow:
 
-- `sales_train_evaluation.csv`
-- `sales_train_validation.csv`
+- `sales_train_evaluation.csv` (preferred; `sales_train_validation.csv` is used only if evaluation is absent)
 - `calendar.csv`
 - `sell_prices.csv`
-- `sample_submission.csv`
+
+The workflow does not extract the unused sales matrix or `sample_submission.csv`.
+The original ZIP remains compressed during transfer; only these required tables are
+temporarily extracted on the GitHub runner. All temporary source files are deleted
+after processing, including on failed runs.
 
 ## Generated data committed to this repository
 
