@@ -36,8 +36,118 @@ st.markdown(
               --orange:#f2b766; --red:#ff747c; }
       .stApp { background:radial-gradient(ellipse at 18% 0%,#142337 0%,#080d14 42%); color:var(--text); }
       html, body, [class*="css"] { font-family:'Manrope',sans-serif; }
-      [data-testid="stSidebar"] { background:#0b121c; border-right:1px solid var(--line); }
+      [data-testid="stSidebar"] {
+        background:
+          radial-gradient(ellipse at 8% 0%, rgba(41,102,133,.22), transparent 38%),
+          linear-gradient(180deg,#0d1724 0%,#09111b 62%,#080e17 100%);
+        border-right:1px solid #26394e;
+      }
+      [data-testid="stSidebar"] > div:first-child { padding-top:1.25rem; }
       [data-testid="stSidebar"] * { color:#dce6f1; }
+      [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2 {
+        font-size:1.12rem !important; letter-spacing:.04em; margin-bottom:.15rem;
+      }
+      [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+        color:#91a8bf; line-height:1.45;
+      }
+      /* Premium dark selectors: remove the default white input surfaces. */
+      [data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background:linear-gradient(145deg,#152538,#101c2b) !important;
+        border:1px solid #30465e !important;
+        border-radius:10px !important;
+        min-height:44px;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+      }
+      [data-testid="stSidebar"] [data-baseweb="select"] span,
+      [data-testid="stSidebar"] [data-baseweb="select"] input {
+        color:#edf5ff !important;
+      }
+      [data-testid="stSidebar"] [data-baseweb="select"] svg { fill:#72d6e7 !important; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] > label {
+        color:#8fa7bf !important;
+        font:600 .66rem 'DM Mono',monospace;
+        letter-spacing:.13em;
+        margin-bottom:.45rem;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] {
+        gap:5px;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label {
+        background:rgba(18,31,46,.62);
+        border:1px solid transparent;
+        border-radius:9px;
+        padding:9px 11px;
+        margin:0;
+        transition:background .15s ease,border-color .15s ease,transform .15s ease;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label:hover {
+        background:#172a3d;
+        border-color:#35516b;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) {
+        background:linear-gradient(100deg,rgba(35,111,139,.35),rgba(20,44,65,.92));
+        border-color:#3d8198;
+        box-shadow:inset 3px 0 0 #58cde0,0 4px 14px rgba(0,0,0,.12);
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label p {
+        color:#dce9f5;
+        font-weight:600;
+        font-size:.84rem;
+      }
+      [data-testid="stSidebar"] [data-testid="stSlider"] [data-baseweb="slider"] div[role="slider"] {
+        background:#62d2e4 !important;
+        border:2px solid #e8fbff !important;
+        box-shadow:0 0 0 4px rgba(82,199,223,.15);
+      }
+      [data-testid="stSidebar"] [data-testid="stSlider"] [data-testid="stTickBar"] {
+        color:#91a8bf !important;
+      }
+      [data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
+        color:#849bb2;
+        font-size:.72rem;
+      }
+      [data-testid="stSidebar"] hr {
+        margin:.9rem 0 1rem 0;
+        border-color:#26394e !important;
+      }
+      .sidebar-brand {
+        padding:15px 14px 14px;
+        border:1px solid #29445c;
+        border-radius:13px;
+        background:linear-gradient(135deg,rgba(27,65,89,.72),rgba(14,25,39,.92));
+        box-shadow:0 12px 28px rgba(0,0,0,.16);
+        margin-bottom:8px;
+      }
+      .sidebar-brand-mark {
+        display:flex; align-items:center; gap:9px;
+        color:#f0f7ff; font-weight:800; letter-spacing:.04em;
+        font-size:1rem;
+      }
+      .sidebar-brand-icon {
+        display:inline-flex; align-items:center; justify-content:center;
+        width:27px; height:27px; border-radius:8px;
+        background:rgba(82,199,223,.14); border:1px solid #3d8198;
+        color:#71d9e9; font-size:1.05rem;
+      }
+      .sidebar-brand-sub {
+        margin-top:7px; color:#9bb0c5; font: .62rem 'DM Mono',monospace;
+        letter-spacing:.13em;
+      }
+      .sidebar-section-label {
+        color:#69cfe0; font:500 .62rem 'DM Mono',monospace;
+        letter-spacing:.15em; margin:4px 0 8px;
+      }
+      .sidebar-selection {
+        padding:9px 11px; border-radius:9px;
+        border:1px solid #2a435a; background:rgba(18,34,50,.68);
+        color:#a9bdd0; font-size:.72rem; margin:7px 0 11px;
+      }
+      .sidebar-selection b { color:#f0f6fc; }
+      .sidebar-footer {
+        border-top:1px solid #26394e; padding-top:12px; margin-top:12px;
+        color:#8fa5ba; font:.63rem 'DM Mono',monospace;
+        letter-spacing:.04em; line-height:1.6;
+      }
       .block-container { padding-top:1.2rem; max-width:1600px; }
       h1,h2,h3 { letter-spacing:-.04em; }
       h1 { font-size:1.8rem !important; font-weight:800 !important; }
@@ -1032,9 +1142,14 @@ def render_scenario(store: str, item: str, service_level: float, lead_time: int)
 
 # ------------------------------ SIDEBAR ------------------------------
 with st.sidebar:
-    st.markdown("## ◈ RETAIL / INTEL")
-    st.markdown('<span class="small-mono">DEMAND & INVENTORY PLATFORM</span>', unsafe_allow_html=True)
-    st.divider()
+    st.markdown(
+        '<div class="sidebar-brand">'
+        '<div class="sidebar-brand-mark"><span class="sidebar-brand-icon">◇</span> RETAIL / INTEL</div>'
+        '<div class="sidebar-brand-sub">DEMAND · FORECAST · INVENTORY</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="sidebar-section-label">DATA SCOPE</div>', unsafe_allow_html=True)
     try:
         options_payload = load_options()
         options = options_payload.get("options", [])
@@ -1053,7 +1168,11 @@ with st.sidebar:
     store = st.selectbox("STORE", stores, key="selected_store")
     items = sorted(pairs.loc[pairs["store_id"] == store, "item_id"].unique())
     item = st.selectbox("SKU / ITEM", items, key=f"item_{store}")
-    st.divider()
+    st.markdown(
+        f'<div class="sidebar-selection">ACTIVE SERIES<br><b>{store}</b> <span style="color:#66839c">/</span> <b>{item}</b></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="sidebar-section-label">WORKSPACES</div>', unsafe_allow_html=True)
     page = st.radio(
         "WORKSPACE",
         ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio"],
@@ -1062,10 +1181,12 @@ with st.sidebar:
     )
     service_level = st.slider("Target service level", .80, .99, .90, .01, format="%.2f")
     lead_time = st.slider("Supplier lead time · days", 1, 30, 7)
-    st.divider()
+    st.markdown('<div class="sidebar-section-label">SYSTEM STATUS</div>', unsafe_allow_html=True)
     st.markdown('<span class="status-pill">● API CONNECTED</span>', unsafe_allow_html=True)
-    st.caption(f"Selected: {store} · {item}")
-    st.caption(f"Endpoint: {API_BASE_URL}")
+    st.markdown(
+        f'<div class="sidebar-footer">LIVE DATA CONNECTION<br>{API_BASE_URL}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 # ------------------------------ MAIN VIEW ------------------------------
