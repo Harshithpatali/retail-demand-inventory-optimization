@@ -42,6 +42,7 @@ def summarize(sim):
         "stockout_units": float(sim["stockout_units"].sum()),
         "average_inventory": float(sim["ending_inventory"].mean()),
         "fill_rate": fulfilled / demand if demand else 1.0,
+        "fulfilled_units": fulfilled,
         "demand_units": demand,
     }
 
@@ -72,9 +73,14 @@ def main() -> None:
         selected_ids = series_volume.index
 
     rows = []
-    lead_times = [1, 3, 5, 7, 10, 14, 21, 30]
-    service_levels = [0.80, 0.85, 0.90, 0.95, 0.97]
     review_period = int(inv_cfg["default_review_period_days"])
+    # A lead-time replenishment must be able to arrive inside the held-out
+    # evaluation window; otherwise all service-level policies can look identical.
+    max_evaluable_lead = int(inv_cfg["test_days"] if "test_days" in inv_cfg else model_cfg["test_days"]) - review_period
+    lead_times = [lead for lead in [1, 3, 5, 7, 10, 14, 21, 30] if lead <= max_evaluable_lead]
+    if not lead_times:
+        raise RuntimeError("Test window is too short for the configured review period and lead-time grid.")
+    service_levels = [0.80, 0.85, 0.90, 0.95, 0.97]
     for sid in selected_ids:
         history = train[train.id == sid].sort_values("date").tail(int(inv_cfg["demand_window_days"]))
         period = test[test.id == sid].sort_values("date")
@@ -134,8 +140,25 @@ def main() -> None:
         candidate_fill_rate=("candidate_fill_rate", "mean"),
         baseline_average_inventory=("baseline_average_inventory", "mean"),
         candidate_average_inventory=("candidate_average_inventory", "mean"),
+        baseline_fulfilled_units=("baseline_fulfilled_units", "sum"),
+        candidate_fulfilled_units=("candidate_fulfilled_units", "sum"),
+        baseline_demand_units=("baseline_demand_units", "sum"),
+        candidate_demand_units=("candidate_demand_units", "sum"),
         series_count=("id", "nunique"),
     )
+    summary["baseline_fill_rate"] = np.where(
+        summary.baseline_demand_units > 0,
+        summary.baseline_fulfilled_units / summary.baseline_demand_units,
+        1.0,
+    )
+    summary["candidate_fill_rate"] = np.where(
+        summary.candidate_demand_units > 0,
+        summary.candidate_fulfilled_units / summary.candidate_demand_units,
+        1.0,
+    )
+    summary["fill_rate_change_pp"] = (
+        summary["candidate_fill_rate"] - summary["baseline_fill_rate"]
+    ) * 100
     summary["cost_change_pct_vs_80pct"] = np.where(
         summary.baseline_total_cost > 0,
         (summary.candidate_total_cost - summary.baseline_total_cost) / summary.baseline_total_cost * 100,
