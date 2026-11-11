@@ -76,7 +76,13 @@ jobs:
           print("Feature date range:", features.date.min(), "to", features.date.max())
           PY
 
+      - name: Remove temporary raw CSVs and downloaded ZIP
+        if: always()
+        run: |
+          rm -rf data/raw .m5_download
+
       - name: Commit processed data to main
+        if: success()
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "data: rebuild M5 processed datasets from original source"
