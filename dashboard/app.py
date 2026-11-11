@@ -217,7 +217,7 @@ def load_forecast(store_id: str, item_id: str, horizon: int) -> dict[str, Any]:
 @st.cache_data(ttl=60, max_entries=256, show_spinner=False)
 def load_inventory(
     store_id: str, item_id: str, service_level: float,
-    lead_time: int, current_inventory: float,
+    lead_time: int, current_inventory: float, review_period: int = 7,
 ) -> dict[str, Any]:
     response = httpx.post(
         f"{API_BASE_URL}/inventory",
@@ -225,8 +225,9 @@ def load_inventory(
             "store_id": store_id, "item_id": item_id,
             "service_level": service_level, "lead_time_days": lead_time,
             "current_inventory": current_inventory,
+            "review_period_days": review_period,
         },
-        timeout=60.0,
+        timeout=httpx.Timeout(90.0, connect=15.0),
     )
     response.raise_for_status()
     return response.json()
@@ -468,7 +469,7 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
                      available_pairs: pd.DataFrame) -> None:
     st.markdown('<div class="eyebrow">DECISION SCIENCE / PERIODIC REVIEW</div>', unsafe_allow_html=True)
     st.header("Inventory control tower")
-    st.caption("Choose a store and SKU here; inventory metrics and the geographic context update for that selection.")
+    st.caption("Periodic-review replenishment uses a 365-day demand window and a 7-day review cycle. On-hand stock is used as the inventory position.")
     selector_store_col, selector_item_col = st.columns(2)
     available_stores = sorted(available_pairs["store_id"].astype(str).unique().tolist())
     selected_store = selector_store_col.selectbox(
@@ -640,7 +641,7 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
     )
     try:
         with st.spinner("Calculating replenishment policy…"):
-            result = load_inventory(store, item, service_level, lead_time, current)
+            result = load_inventory(store, item, service_level, lead_time, current, 7)
     except Exception as exc:
         st.error(f"Inventory service unavailable: {exc}")
         return
@@ -660,7 +661,7 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Reorder point", money(reorder), "units")
     c2.metric("Safety stock", money(result["safety_stock"]), "buffer units")
-    c3.metric("Lead-time demand", money(result["lead_time_demand"]), "expected units")
+    c3.metric("Protection-period demand", money(result["mean_daily_demand"] * result["protection_period_days"]), f'{result["protection_period_days"]} days (L + R)')
     c4.metric("Suggested order", money(result["order_quantity"]), "units")
 
     left, right = st.columns([1, 1.35])
@@ -714,11 +715,12 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
     mean = float(result["mean_daily_demand"])
     levels = np.array([.80, .85, .90, .92, .95, .97, .99])
     z_values = np.array([NormalDist().inv_cdf(float(level)) for level in levels])
-    safety = std * np.sqrt(max(lead_time, 1)) * z_values
+    protection_days = int(result.get("protection_period_days", lead_time + 7))
+    safety = std * np.sqrt(max(protection_days, 1)) * z_values
     sensitivity = pd.DataFrame({
         "Service level": levels,
         "Safety stock": safety,
-        "Reorder point": mean * lead_time + safety,
+        "Reorder point": mean * protection_days + safety,
     })
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=sensitivity["Service level"], y=sensitivity["Reorder point"],
@@ -728,7 +730,7 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
                              mode="lines+markers", name="Safety stock",
                              line=dict(color="#b58ae8", width=2)))
     st.plotly_chart(plot_layout(fig, 300), use_container_width=True, config=PLOT_CONFIG)
-    st.caption("Sensitivity curve uses a normal-demand approximation for explanation; it is not a fresh inventory simulation.")
+    st.caption("Sensitivity curve uses the same protection period (lead time + 7-day review cycle) and a normal-demand approximation; it is not a fresh inventory simulation. Open purchase orders are not included in the live inventory position.")
     with st.expander("Inventory policy details"):
         st.json(result)
 
