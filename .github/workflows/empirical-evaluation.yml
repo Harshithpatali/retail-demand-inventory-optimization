@@ -1,0 +1,60 @@
+name: empirical-evaluation
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/empirical-evaluation.yml"
+      - "scripts/run_rolling_backtest.py"
+      - "scripts/run_advanced_evaluation.py"
+      - "scripts/run_forecast_driven_inventory.py"
+      - "scripts/run_inventory_sensitivity.py"
+      - "data/processed/forecast_features.parquet"
+      - "models/forecasting/validation_model.joblib"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: empirical-evaluation-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install evaluation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-api.txt
+      - name: Verify inputs
+        run: |
+          test -s data/processed/forecast_features.parquet
+          test -s models/forecasting/validation_model.joblib
+          python - <<'PY'
+          import pandas as pd
+          df = pd.read_parquet("data/processed/forecast_features.parquet")
+          print("Rows:", len(df), "Series:", df["id"].nunique(),
+                "Dates:", pd.to_datetime(df["date"]).min(), "to",
+                pd.to_datetime(df["date"]).max())
+          PY
+      - name: Rolling-origin temporal evaluation
+        run: python -m scripts.run_rolling_backtest
+      - name: Croston SBA and conformal diagnostics
+        run: python -m scripts.run_advanced_evaluation
+      - name: Forecast-driven inventory evaluation
+        run: python -m scripts.run_forecast_driven_inventory
+      - name: Lead-time, service-level and cost sensitivity
+        run: python -m scripts.run_inventory_sensitivity
+      - name: Upload empirical evaluation tables
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retail-demand-empirical-evaluation
+          path: reports/tables/*.csv
+          if-no-files-found: warn
+          retention-days: 30
