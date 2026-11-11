@@ -11,8 +11,10 @@ _service = ForecastService()
 
 @lru_cache(maxsize=256)
 def _forecast_cached(store_id: str, item_id: str, horizon_days: int):
-    """Cache repeat forecasts; model and series artifacts are cached separately."""
-    name, std, output = _service.forecast(store_id, item_id, horizon_days)
+    """Cache repeat forecasts and their calibration metadata."""
+    name, std, output, interval_method = _service.forecast(
+        store_id, item_id, horizon_days
+    )
     points = [
         {
             "date": str(row.date.date()),
@@ -22,20 +24,20 @@ def _forecast_cached(store_id: str, item_id: str, horizon_days: int):
         }
         for row in output.itertuples(index=False)
     ]
-    return name, float(std), points
+    return name, float(std), points, interval_method
 
 
 @router.post("/forecast", response_model=ForecastResponse)
 def forecast(req: ForecastRequest):
     try:
-        name, std, points = _forecast_cached(
-            req.store_id,
-            req.item_id,
-            req.horizon_days,
+        name, std, points, interval_method = _forecast_cached(
+            req.store_id, req.item_id, req.horizon_days
         )
         return ForecastResponse(
             model_name=name,
             residual_std=std,
+            interval_method=interval_method,
+            nominal_coverage=0.90,
             forecasts=[ForecastPoint(**point) for point in points],
         )
     except (FileNotFoundError, ValueError) as exc:
