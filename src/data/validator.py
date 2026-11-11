@@ -39,14 +39,11 @@ REQUIRED = {
 
 def validate_raw_files(raw: Path) -> list[str]:
     """Return required raw files that are missing."""
-    required = [
-        "sales_train_evaluation.csv",
-        "sales_train_validation.csv",
-        "calendar.csv",
-        "sell_prices.csv",
-        "sample_submission.csv",
-    ]
-    return [name for name in required if not (raw / name).exists()]
+    required = ["calendar.csv", "sell_prices.csv"]
+    missing = [name for name in required if not (raw / name).exists()]
+    if not (raw / "sales_train_evaluation.csv").exists() and not (raw / "sales_train_validation.csv").exists():
+        missing.append("sales_train_evaluation.csv or sales_train_validation.csv")
+    return missing
 
 
 def validate_sales_columns(columns: Iterable[str] | pd.DataFrame) -> None:
