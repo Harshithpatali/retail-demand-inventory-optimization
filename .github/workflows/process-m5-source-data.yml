@@ -41,6 +41,9 @@ jobs:
           M5_ZIP_PATH: ${{ secrets.M5_ZIP_PATH }}
         run: python -m scripts.download_m5_from_supabase
 
+      - name: Run full-population EDA on original M5 sales matrix
+        run: python -m scripts.run_full_population_eda
+
       - name: Rebuild cleaned and feature datasets from original source
         run: |
           python -m scripts.prepare_data
@@ -91,3 +94,4 @@ jobs:
             data/interim/cleaned_sales.parquet
             data/interim/validation_report.json
             data/processed/forecast_features.parquet
+            reports/eda/full_data/
