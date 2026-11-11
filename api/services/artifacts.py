@@ -52,7 +52,11 @@ class ArtifactStore:
         )
         if df.empty:
             return df
-        return df.sort_values("date").tail(56).reset_index(drop=True)
+        # Retain a year of observations for stable inventory statistics and
+        # enough lag history for recursive forecasts. EDA has its own full-history loader.
+        import os
+        history_days = max(56, min(int(os.getenv("API_HISTORY_DAYS", "365")), 1825))
+        return df.sort_values("date").tail(history_days).reset_index(drop=True)
 
     @staticmethod
     @lru_cache(maxsize=64)
