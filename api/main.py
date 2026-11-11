@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,15 +15,16 @@ from api.routes.network import router as network_router
 
 app = FastAPI(
     title="Retail Demand Forecasting & Inventory Optimization API",
-    version="1.1.0",
+    version="1.2.0",
     description="Low-latency demand intelligence and inventory decision API.",
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[origin.strip().rstrip("/") for origin in os.getenv("CORS_ALLOWED_ORIGINS", "https://retail-demand-inventory-optimization-v1.streamlit.app,http://localhost:8501,http://127.0.0.1:8501").split(",") if origin.strip()],
+    allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type"],
+    max_age=600,
 )
 for router in [
     health_router,
