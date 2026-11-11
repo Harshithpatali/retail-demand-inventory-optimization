@@ -2,6 +2,11 @@ name: process-m5-source-data
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/run_full_population_eda.py
+      - .github/workflows/process-m5-source-data.yml
 
 permissions:
   contents: write
