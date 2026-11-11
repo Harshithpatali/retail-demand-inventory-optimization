@@ -71,6 +71,13 @@ def build_validation_report(
     prices: pd.DataFrame,
 ) -> dict:
     """Build a compact validation report for the selected data."""
+    series_metadata = selected_sales[
+        ["id", "item_id", "store_id"]
+    ].drop_duplicates()
+    duplicate_series_metadata = int(series_metadata["id"].duplicated().sum())
+    duplicate_series_date_rows = int(
+        selected_sales.duplicated(subset=["id", "date"]).sum()
+    )
     return {
         "selected_sales_rows": int(len(selected_sales)),
         "selected_series": int(selected_sales["id"].nunique()),
@@ -78,5 +85,6 @@ def build_validation_report(
         "calendar_missing_dates": int(calendar["date"].isna().sum()),
         "price_rows": int(len(prices)),
         "price_missing_sell_price": int(prices["sell_price"].isna().sum()),
-        "duplicate_series": int(selected_sales["id"].duplicated().sum()),
+        "duplicate_series": duplicate_series_metadata,
+        "duplicate_series_date_rows": duplicate_series_date_rows,
     }
