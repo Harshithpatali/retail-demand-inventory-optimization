@@ -1199,7 +1199,7 @@ with st.sidebar:
         "WORKSPACE",
         ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio"],
         label_visibility="collapsed",
-        key="workspace_navigation_v2",
+        key="workspace_navigation_v3",
     )
     service_level = st.slider("Target service level", .80, .99, .90, .01, format="%.2f")
     lead_time = st.slider("Supplier lead time · days", 1, 30, 7)
