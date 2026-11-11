@@ -1,4 +1,5 @@
-import pandas as pd\nimport pytest
+import pandas as pd
+import pytest
 
 from scripts.run_rolling_backtest import paired_cluster_bootstrap
 
