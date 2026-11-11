@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/empirical-evaluation.yml"
       - "scripts/run_rolling_backtest.py"
+      - "configs/model_config.yaml"
+      - "requirements-api.txt"
       - "scripts/run_advanced_evaluation.py"
       - "scripts/run_forecast_driven_inventory.py"
       - "scripts/run_inventory_sensitivity.py"
@@ -42,7 +44,7 @@ jobs:
                 "Dates:", pd.to_datetime(df["date"]).min(), "to",
                 pd.to_datetime(df["date"]).max())
           PY
-      - name: Rolling-origin temporal evaluation
+      - name: Expanding-window rolling-origin refit and statistical comparisons
         run: python -m scripts.run_rolling_backtest
       - name: Croston SBA and conformal diagnostics
         run: python -m scripts.run_advanced_evaluation
