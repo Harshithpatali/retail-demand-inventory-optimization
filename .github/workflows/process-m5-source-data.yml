@@ -89,6 +89,10 @@ jobs:
         run: |
           rm -rf data/raw .m5_download
 
+      - name: Stage full-population EDA outputs explicitly
+        if: success()
+        run: git add -f reports/eda/full_data/
+
       - name: Commit processed data to main
         if: success()
         uses: stefanzweifel/git-auto-commit-action@v5
