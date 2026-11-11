@@ -183,13 +183,22 @@ def plot_layout(fig: go.Figure, height: int = 330, legend: bool = True) -> go.Fi
     fig.update_layout(
         template="plotly_dark",
         height=height,
-        margin=dict(l=18, r=18, t=32, b=18),
+        # Reserve space above the plot so legends are not clipped on mobile.
+        margin=dict(l=22, r=24, t=76 if legend else 32, b=28),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Manrope, sans-serif", color="#b9c8d8", size=11),
+        font=dict(family="Manrope, sans-serif", color="#e5edf7", size=12),
         legend=dict(
-            orientation="h", yanchor="bottom", y=1.02,
-            xanchor="right", x=1, bgcolor="rgba(0,0,0,0)",
+            visible=True,
+            orientation="h",
+            yanchor="top", y=1.18,
+            xanchor="left", x=0,
+            font=dict(family="Manrope, sans-serif", color="#f2f6fc", size=12),
+            bgcolor="rgba(13,22,34,.96)",
+            bordercolor="#40566d", borderwidth=1,
+            itemsizing="constant",
+            itemwidth=80,
+            tracegroupgap=8,
         ) if legend else dict(visible=False),
         hoverlabel=dict(bgcolor="#172536", bordercolor="#38506a"),
     )
@@ -467,8 +476,20 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
                 template="plotly_dark", height=390,
                 margin=dict(l=0, r=0, t=10, b=0),
                 paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Manrope, sans-serif", color="#f2f6fc", size=12),
                 geo=dict(bgcolor="rgba(0,0,0,0)"),
-                coloraxis_colorbar=dict(title="Demand"),
+                legend=dict(
+                    visible=True, orientation="h",
+                    yanchor="top", y=1.12, xanchor="left", x=0,
+                    font=dict(color="#f2f6fc", size=12),
+                    bgcolor="rgba(13,22,34,.96)",
+                    bordercolor="#40566d", borderwidth=1,
+                ),
+                coloraxis_colorbar=dict(
+                    title=dict(text="Units sold", font=dict(color="#f2f6fc", size=12)),
+                    tickfont=dict(color="#e5edf7", size=11),
+                    outlinecolor="#40566d",
+                ),
             )
             st.plotly_chart(geo_fig, use_container_width=True, config=PLOT_CONFIG)
             st.caption("Color intensity represents historical units sold, not transaction counts. State shading is aggregated across the selected M5 sample; diamond markers are synthetic planning anchors.")
@@ -486,8 +507,16 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
                     color_discrete_map={True: "#f0b66b", False: "#55c8df"},
                     labels={"store_id": "M5 store", "total_demand": "Historical units sold", "selected": "Selected store"},
                 )
-                rank_fig.update_layout(showlegend=False, xaxis_title="Store", yaxis_title="Historical units sold")
-                st.plotly_chart(plot_layout(rank_fig, 300, legend=False), use_container_width=True, config=PLOT_CONFIG)
+                rank_fig.update_layout(
+                    showlegend=True, xaxis_title="Store", yaxis_title="Historical units sold",
+                    legend=dict(
+                        title=None, orientation="h", yanchor="bottom", y=1.02,
+                        xanchor="left", x=0, font=dict(color="#f2f6fc", size=12),
+                        bgcolor="rgba(13,22,34,.96)", bordercolor="#40566d", borderwidth=1,
+                    ),
+                )
+                st.caption("Legend: amber = selected store · cyan = other stores")
+                st.plotly_chart(plot_layout(rank_fig, 330), use_container_width=True, config=PLOT_CONFIG)
     except Exception as geo_exc:
         st.warning(f"Geographic context is temporarily unavailable: {geo_exc}")
 
