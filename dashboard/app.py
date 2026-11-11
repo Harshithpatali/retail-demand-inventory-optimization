@@ -397,24 +397,57 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
         network_states = pd.DataFrame(network_payload.get("states", []))
         network_centres = pd.DataFrame(network_payload.get("distribution_centers", []))
         if not network_states.empty:
-            network_states["selected_state_demand"] = np.where(
-                network_states["state_code"].astype(str) == state_code,
-                network_states["total_demand"], 0.0,
+            network_states["is_selected_state"] = (
+                network_states["state_code"].astype(str) == state_code
             )
+            store_rows = pd.DataFrame(network_payload.get("stores", []))
+            selected_store_rows = store_rows.loc[
+                store_rows["store_id"].astype(str) == store
+            ] if not store_rows.empty else pd.DataFrame()
+            store_demand = (
+                float(selected_store_rows["total_demand"].sum())
+                if not selected_store_rows.empty else float("nan")
+            )
+            state_row = network_states.loc[network_states["is_selected_state"]]
+            state_demand = (
+                float(state_row["total_demand"].iloc[0])
+                if not state_row.empty else float("nan")
+            )
+            selected_item_demand = (
+                float(pd.to_numeric(history["demand"], errors="coerce").fillna(0).sum())
+                if "demand" in history.columns else float("nan")
+            )
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("State sales volume", money(state_demand), "units")
+            m2.metric("Selected store sales", money(store_demand), "units")
+            m3.metric("Selected SKU sales", money(selected_item_demand), "units")
+            m4.metric("Stores in state", int(state_row["store_count"].iloc[0]) if not state_row.empty else 0)
+
             card_title(
-                "Selected store geography",
-                f"{store} is represented at state level ({state_name}); no precise store address is available.",
+                "Demand heatmap by state",
+                f"Historical units sold · selected store {store} ({state_name}) is highlighted in the summary.",
             )
             geo_fig = px.choropleth(
                 network_states,
                 locations="state_code",
                 locationmode="USA-states",
-                color="selected_state_demand",
+                color="total_demand",
                 hover_name="state_name",
-                hover_data=["store_count", "series_count", "total_demand"],
-                color_continuous_scale=["#172638", "#55c8df"],
+                hover_data={
+                    "state_code": True,
+                    "store_count": True,
+                    "series_count": True,
+                    "total_demand": ":,.0f",
+                    "is_selected_state": True,
+                },
+                color_continuous_scale=["#142638", "#267a91", "#65d1df"],
                 scope="usa",
-                labels={"selected_state_demand": "Selected-state demand"},
+                labels={
+                    "total_demand": "Historical units sold",
+                    "store_count": "Stores",
+                    "series_count": "Store-item series",
+                    "is_selected_state": "Selected state",
+                },
             )
             if not network_centres.empty:
                 geo_fig.add_trace(go.Scattergeo(
@@ -438,7 +471,23 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
                 coloraxis_colorbar=dict(title="Demand"),
             )
             st.plotly_chart(geo_fig, use_container_width=True, config=PLOT_CONFIG)
-            st.caption("State-level demand is observed M5 data. Diamond markers are synthetic planning anchors, not verified warehouses.")
+            st.caption("Color intensity represents historical units sold, not transaction counts. State shading is aggregated across the selected M5 sample; diamond markers are synthetic planning anchors.")
+
+            if not store_rows.empty:
+                card_title("Store-level sales volume", "Ranked M5 stores in the selected sample; select a store above to inspect its SKU.")
+                store_rank = store_rows.sort_values("total_demand", ascending=False).copy()
+                store_rank["selected"] = store_rank["store_id"].astype(str) == store
+                rank_fig = px.bar(
+                    store_rank,
+                    x="store_id",
+                    y="total_demand",
+                    color="selected",
+                    hover_data=["state_name", "series_count", "item_count", "average_daily_demand"],
+                    color_discrete_map={True: "#f0b66b", False: "#55c8df"},
+                    labels={"store_id": "M5 store", "total_demand": "Historical units sold", "selected": "Selected store"},
+                )
+                rank_fig.update_layout(showlegend=False, xaxis_title="Store", yaxis_title="Historical units sold")
+                st.plotly_chart(plot_layout(rank_fig, 300, legend=False), use_container_width=True, config=PLOT_CONFIG)
     except Exception as geo_exc:
         st.warning(f"Geographic context is temporarily unavailable: {geo_exc}")
 
