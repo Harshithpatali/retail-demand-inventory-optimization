@@ -17,7 +17,9 @@ def main():
     model_path = ROOT / "models/forecasting/validation_model.joblib"
     if not path.exists() or not model_path.exists():
         raise FileNotFoundError("Run build_features and train_models first.")
-    df = pd.read_parquet(path).sort_values(["id", "date"])
+    df = pd.read_parquet(path)
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values(["id", "date"])
     bundle = joblib.load(model_path)
     unique_dates = pd.DatetimeIndex(sorted(pd.to_datetime(df.date).unique()))
     horizon = int(cfg["test_days"])
