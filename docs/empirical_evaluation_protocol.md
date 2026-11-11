@@ -6,7 +6,11 @@ The live Streamlit UI, map and inventory gauge have been visually checked by the
 ## Reproducible experiments
 The `empirical-evaluation` GitHub Actions workflow runs against the committed processed M5 feature panel and validation model. It creates:
 
-- `rolling_origin_backtest.csv`: four successive chronological windows using the saved validation model. The model is held fixed; it is a temporal robustness check, not refitting at every origin.
+- `rolling_origin_refit_by_fold.csv`: four successive, non-overlapping 28-day test windows. At each origin, XGBoost and LightGBM are newly trained using only rows strictly before that origin; naive, seasonal-naive and moving-average forecasts use only each series' pre-origin history.
+- `rolling_origin_refit_summary.csv`: pooled out-of-fold MAE, RMSE and WAPE across all rolling test windows and all five models.
+- `rolling_origin_paired_comparisons.csv`: paired series-cluster bootstrap comparison of XGBoost WAPE against LightGBM and each baseline, with 95% percentile intervals and a two-sided bootstrap sign test. The resampling unit is the item-store series, not individual daily rows, to avoid treating repeated observations within a series as independent.
+
+The older fixed-model temporal robustness results remain in the historical evaluation report; they are not presented as the new retrained experiment.
 - `advanced_forecast_metrics.csv`: held-out one-step-ahead model metrics compared with rolling one-step Croston SBA.
 - `conformal_interval_diagnostics.csv`: empirical coverage and mean width at 80%, 90% and 95% nominal levels, calibrated on the prior validation window.
 - `forecast_metrics_by_demand_segment.csv`: error metrics across low-, medium- and high-volume series.
