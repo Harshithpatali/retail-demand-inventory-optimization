@@ -35,3 +35,25 @@ def test_paired_cluster_bootstrap_returns_nan_for_single_series():
     result = paired_cluster_bootstrap(frame, "model_a", "model_b", n_bootstrap=100)
     assert result["series_count"] == 1
     assert pd.isna(result["mean_wape_delta_pp"])
+
+
+def test_baselines_update_history_after_each_one_step_forecast():
+    from scripts.run_rolling_backtest import _predict_baselines
+
+    train = pd.DataFrame({
+        "id": ["sku-a"] * 7,
+        "date": pd.date_range("2024-01-01", periods=7),
+        "demand": [1, 2, 3, 4, 5, 6, 7],
+    })
+    test = pd.DataFrame({
+        "id": ["sku-a"] * 3,
+        "date": pd.date_range("2024-01-08", periods=3),
+        "demand": [20, 30, 40],
+    }, index=[10, 11, 12])
+
+    predictions = _predict_baselines(train, test)
+
+    # The next date uses the prior date's actual demand, not a frozen origin.
+    assert predictions["naive"].tolist() == [7.0, 20.0, 30.0]
+    assert predictions["seasonal_naive"].tolist() == [1.0, 2.0, 3.0]
+    assert predictions["moving_average"].tolist() == [4.0, 6.0, 9.0]
