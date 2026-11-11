@@ -1,52 +1,34 @@
 # Inventory methodology
 
-The project uses a periodic-review `(R,S)` inventory policy.
+## Live API and dashboard policy
 
-## Demand statistics
+The interactive inventory endpoint and dashboard use the same periodic-review `(R,S)` calculation implemented in `src/inventory/inventory_policy.py`.
 
-For each item-store series, inventory-policy demand statistics are estimated from the most recent configurable training window. The default is **365 days**, chosen to reduce sensitivity to a short recent window in a highly intermittent demand series.
+- Demand statistics use the most recent **365 observations** by default (configurable with `API_HISTORY_DAYS`, bounded to 56–1,825 days).
+- Review period defaults to **7 days**.
+- Protection period is **lead time + review period**.
+- Target inventory position is expected protection-period demand plus safety stock.
+- Suggested order quantity is the positive gap between target inventory position and the entered on-hand quantity, capped at 500 units.
+- The live interface treats on-hand stock as inventory position because the dataset and UI do not provide open purchase orders or reservations. This is an explicit simplifying assumption, not a complete ERP inventory-position calculation.
 
-## Periodic review
+The live API and dashboard expose protection-period length, target inventory position and demand-history window so users can inspect the assumptions.
 
-`R` is the review period. The simulator checks the inventory position only on scheduled review dates.
+## Demand statistics and safety stock
 
-`S` is the target inventory position. At a review:
+Mean and sample standard deviation are calculated from the recent history window. Safety stock uses a normal-demand approximation:
 
-- inventory position = on-hand + outstanding purchase orders
-- if inventory position is below `S`, place an order toward `S`
-- the order arrives only after the configured lead time
-
-## Protection period
-
-For periodic review, the protected period is:
-
-`L + R`
-
-where `L` is lead time and `R` is review period.
-
-The independent daily-demand approximation uses:
-
-`Safety Stock = z * sigma_daily * sqrt(L + R)`
+`Safety Stock = z(service level) × sigma_daily × sqrt(L + R)`
 
 and:
 
-`S = mean_daily_demand * (L + R) + Safety Stock`
+`Target S = mean_daily_demand × (L + R) + Safety Stock`
 
-The same uncertainty is not added again elsewhere in the inventory calculation.
+The normal approximation is a planning baseline. It can be inaccurate for intermittent, skewed or highly seasonal demand. The offline evaluation includes conformal residual diagnostics and Croston SBA as additional statistical checks.
 
 ## Replenishment constraints
 
-Orders respect configurable minimum and maximum quantities. The default minimum order quantity is **5 units** and is a simulation assumption intended to avoid unrealistically frequent 1-unit purchase orders. It is not a claim about a real retailer's MOQ.
+Orders are capped at 500 units in the live demo. The cap is a protective demo assumption, not a retailer contract or MOQ. The offline simulator has its own configurable MOQ and maximum order constraints.
 
-## Policy optimization
+## Evaluation
 
-The project searches:
-
-- 6 service levels
-- 6 review periods
-
-for 36 candidate policies per series. Candidates are evaluated on the validation period using total cost:
-
-`Holding Cost + Ordering Cost + Stockout Cost`
-
-The lowest-cost validation policy is selected and evaluated once on the held-out test period.
+The offline forecast-driven inventory experiment selects policy parameters on validation data and evaluates the frozen policy on held-out demand. Its simulated economics are separate from the interactive single-SKU calculator. They are not realized retailer savings.
