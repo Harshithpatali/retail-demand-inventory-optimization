@@ -21,8 +21,13 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw"
-REQUIRED = {"calendar.csv", "sell_prices.csv"}
-SALES_OPTIONS = {"sales_train_validation.csv", "sales_train_evaluation.csv"}
+REQUIRED = {
+    "sales_train_validation.csv",
+    "sales_train_evaluation.csv",
+    "calendar.csv",
+    "sell_prices.csv",
+    "sample_submission.csv",
+}
 BUCKET_DEFAULT = "m5-raw-data"
 TIMEOUT = (20, 180)
 
