@@ -28,7 +28,7 @@ Additional analysis tools are available:
 
 | Command | Purpose |
 |---|---|
-| `python -m scripts.run_rolling_backtest` | Multiple chronological forecast origins |
+| `python -m scripts.run_rolling_backtest` | Expanding-window rolling-origin refit of XGBoost and LightGBM, compared with naive, seasonal-naive and moving-average baselines; paired series-cluster bootstrap intervals and two-sided tests |
 | `python -m scripts.run_advanced_evaluation` | Croston SBA comparison and empirical interval coverage/width |
 | `python -m scripts.run_forecast_driven_inventory` | Validation-selected forecast-informed inventory policies evaluated on held-out demand |
 | `python -m scripts.run_inventory_sensitivity` | Lead-time, service-level and inventory-cost sensitivity across a stratified 30-series sample |
