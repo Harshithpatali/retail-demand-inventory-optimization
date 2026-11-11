@@ -59,7 +59,12 @@ def _network_payload(parquet_path: str):
         return None
 
     frame["store_id"] = frame["store_id"].astype(str)
-    frame["state_code"] = frame["state_code"].astype(str)
+    # The processed feature pipeline encodes state_code as category integers
+    # (0/1/2). Recover the real M5 state abbreviation from the canonical
+    # store identifier, e.g. CA_1 -> CA. Never use the encoded integer on a
+    # USA-states choropleth.
+    frame["state_code"] = frame["store_id"].str.split("_", n=1).str[0].str.upper()
+    frame["state_name"] = frame["state_code"].map(STATE_NAMES).fillna("Unknown")
     frame["demand"] = pd.to_numeric(frame["demand"], errors="coerce").fillna(0.0)
 
     daily_store = (
@@ -92,12 +97,14 @@ def _network_payload(parquet_path: str):
         stores.append({
             "store_id": str(row.store_id),
             "state_code": state_code,
-            "state_name": STATE_NAMES.get(state_code, state_code),
+            "state_name": STATE_NAMES.get(state_code, "Unknown"),
             "total_demand": float(row.total_demand),
             "average_daily_demand": float(row.average_daily_demand),
             "series_count": int(row.series_count),
             "item_count": int(row.item_count),
-            "distribution_center_id": f"SYNTH_DC_{state_code}",
+            "distribution_center_id": (
+                f"SYNTH_DC_{state_code}" if state_code in STATE_NAMES else None
+            ),
             "assignment_type": "synthetic_state_match",
         })
 
