@@ -14,9 +14,12 @@ The manual GitHub Actions workflow
 3. Verifies ZIP integrity but extracts only one sales matrix (evaluation, or validation
    as fallback), `calendar.csv` and `sell_prices.csv`. It skips
    `sample_submission.csv` and the unused second sales matrix.
-4. Runs `scripts.prepare_data` and `scripts.build_features` to produce Parquet.
-5. Deletes the temporary ZIP and raw CSVs, validates the generated outputs, and commits
-   only the processed Parquet datasets and validation report to `main`.
+4. Runs `scripts.run_full_population_eda` across every series and every available
+   sales day, using chunked reads so it does not materialize the full long panel.
+5. Runs `scripts.prepare_data` and `scripts.build_features` for the separate
+   deterministic 200-series modelling panel.
+6. Deletes the temporary ZIP and raw CSVs, validates the generated outputs, and commits
+   compact EDA tables/plots plus the model-ready Parquet datasets to `main`.
 
 Required GitHub repository secrets:
 
@@ -45,6 +48,15 @@ The original ZIP remains compressed during transfer; only these required tables 
 temporarily extracted on the GitHub runner. All temporary source files are deleted
 after processing, including on failed runs.
 
+## Full-population EDA outputs
+
+The full-population EDA is generated from the original sales matrix before the
+200-series modelling subset is selected. It covers all 30,490 candidate item-store
+series and the complete available daily history. Chunked processing writes compact
+series metrics, daily/monthly/weekday demand summaries, state/store/category/
+department aggregates, price summaries, a JSON headline report, and plots under
+`reports/eda/full_data/`. See `FULL_DATA_EDA.md` in that directory.
+
 ## Generated data committed to this repository
 
 - `data/interim/cleaned_sales.parquet`: cleaned long-form demand panel for the
@@ -52,6 +64,8 @@ after processing, including on failed runs.
 - `data/interim/validation_report.json`: compact source-data and cleaning checks.
 - `data/processed/forecast_features.parquet`: model-ready panel with lag,
   rolling, calendar and price features.
+- `reports/eda/full_data/`: full-population EDA report, all-series metrics,
+  temporal/segment/price summaries and figures.
 
 Raw source files in `data/raw/` are ignored by Git and are never committed by
 the processing workflow. The default experiment selects up to 20 items per store
