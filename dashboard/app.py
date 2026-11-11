@@ -104,7 +104,6 @@ def load_forecast(store_id: str, item_id: str, horizon: int) -> dict[str, Any]:
     return response.json()
 
 
-@st.cache_data(ttl=120, max_entries=512, show_spinner=False)
 @st.cache_data(ttl=60, max_entries=256, show_spinner=False)
 def load_inventory(
     store_id: str, item_id: str, service_level: float,
