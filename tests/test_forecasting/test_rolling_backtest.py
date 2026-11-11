@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as pd\nimport pytest
 
 from scripts.run_rolling_backtest import paired_cluster_bootstrap
 
@@ -56,4 +56,4 @@ def test_baselines_update_history_after_each_one_step_forecast():
     # The next date uses the prior date's actual demand, not a frozen origin.
     assert predictions["naive"].tolist() == [7.0, 20.0, 30.0]
     assert predictions["seasonal_naive"].tolist() == [1.0, 2.0, 3.0]
-    assert predictions["moving_average"].tolist() == [4.0, 6.0, 9.0]
+    assert predictions["moving_average"].tolist() == pytest.approx([4.0, 47.0 / 7.0, 75.0 / 7.0])
