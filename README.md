@@ -20,7 +20,7 @@ The dashboard includes a Network Intelligence workspace with state-level M5 dema
 
 ## Interactive analytics dashboard
 
-The Streamlit workspace includes an executive overview, full-history EDA, interactive demand forecast, inventory control, business-impact analysis, and a what-if scenario studio. The EDA page exposes descriptive statistics, demand quantiles, intermittency, long-run trend, monthly and weekday seasonality, distribution, and lag autocorrelation. The API caches full-series EDA results with a bounded process-local cache.
+The Streamlit workspace includes an executive overview, full-history EDA, interactive demand forecast, inventory control, business-impact analysis, and a what-if scenario studio. The EDA page exposes descriptive statistics, demand quantiles, intermittency, long-run trend, monthly and weekday seasonality, distribution, and lag autocorrelation. The API caches full-series EDA results with a bounded process-local cache. Live inventory decisions use a configurable 365-day demand history and a periodic-review protection period of lead time plus review period.
 
 ## Advanced statistical evaluation
 
@@ -56,13 +56,14 @@ python -m scripts.build_business_impact
 pytest -q
 ```
 
-Raw data and generated artifacts are intentionally not committed. See the configuration files for the subset size, split windows, inventory costs, lead time, review periods, MOQ, and maximum order quantity.
+Raw M5 source files are not committed. A bounded processed feature panel, model artifacts and demo lookup artifacts are committed to support the hosted application and reproducible evaluation. Regenerate them when changing the data or model. See the configuration files for the subset size, split windows, inventory costs, lead time, review periods, MOQ, and maximum order quantity.
 
 ## Important limitations
 
 - The standard model experiment uses 200 series, not the complete M5 panel.
-- Future promotions, prices, and event signals are not fully known; the live recursive API forecast uses conservative defaults.
-- Conformal coverage under serial dependence is empirical and must be monitored over time.
+- Future promotions, prices, and event signals are not fully known; the live recursive API forecast carries the latest known price and uses conservative event defaults.
+- Live inventory position uses on-hand units only; open purchase orders and reserved stock are not represented.
+- Live forecast intervals use validation-calibrated absolute-residual conformal radii when the calibration artifact contains residual scores; older artifacts fall back to a normal approximation. Coverage under serial dependence is empirical and must be monitored over time.
 - The forecast-driven inventory evaluation is a rolling one-step-ahead decision simulation, not a fixed-origin multi-week forecast.
 - Lead time is deterministic in the current simulator; stochastic supplier delays remain a future extension.
 - All reported inventory economics are simulated under assumptions and are not evidence of realized retailer savings.
