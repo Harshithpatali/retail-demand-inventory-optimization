@@ -31,10 +31,11 @@ Additional analysis tools are available:
 | `python -m scripts.run_rolling_backtest` | Multiple chronological forecast origins |
 | `python -m scripts.run_advanced_evaluation` | Croston SBA comparison and empirical interval coverage/width |
 | `python -m scripts.run_forecast_driven_inventory` | Validation-selected forecast-informed inventory policies evaluated on held-out demand |
+| `python -m scripts.run_inventory_sensitivity` | Lead-time, service-level and inventory-cost sensitivity across a stratified 30-series sample |
 
 New components include finite-sample conformal residual quantiles, block residual calibration over protection periods, Croston/SBA intermittent-demand baselines, and forecast-driven (R,S) targets.
 
-See [advanced statistical methodology](docs/advanced_statistical_methodology.md), [inventory methodology](docs/inventory_methodology.md), and [business assumptions](docs/business_assumptions.md).
+See the measured [empirical evaluation results](docs/empirical_evaluation_results.md), [evaluation protocol](docs/empirical_evaluation_protocol.md), [advanced statistical methodology](docs/advanced_statistical_methodology.md), [inventory methodology](docs/inventory_methodology.md), and [business assumptions](docs/business_assumptions.md).
 
 ## Reproduce
 
@@ -50,6 +51,7 @@ python -m scripts.run_inventory_simulation
 python -m scripts.run_rolling_backtest
 python -m scripts.run_advanced_evaluation
 python -m scripts.run_forecast_driven_inventory
+python -m scripts.run_inventory_sensitivity
 python -m scripts.build_business_impact
 pytest -q
 ```
