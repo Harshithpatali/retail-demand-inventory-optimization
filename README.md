@@ -2,7 +2,9 @@
 
 An end-to-end applied Data Science project that turns retail point-of-sale history into demand forecasts, uncertainty estimates, replenishment policies, and measurable inventory trade-offs.
 
-The project combines **large-scale exploratory data analysis, time-series feature engineering, gradient-boosted forecasting, statistical evaluation, conformal uncertainty diagnostics, intermittent-demand benchmarks, and simulation-based inventory optimization**. It is built around the public M5 Forecasting — Accuracy competition data, with the original source archive kept in a private Supabase Storage bucket.
+
+
+**Decision-maker brief:** [Inventory replenishment decision brief](docs/DECISION_BRIEF.md) — summarizes the simulated cost/service improvement, assumptions, and what a real pilot would need.
 
 <p align="left">
   <a href="https://retail-demand-inventory-optimization-v1.streamlit.app/"><strong>Live Streamlit Dashboard</strong></a> ·
