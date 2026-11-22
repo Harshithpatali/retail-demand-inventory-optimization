@@ -478,3 +478,22 @@ Potential next steps include:
 The GitHub code, data-processing workflow and automated test workflow have completed successfully. The full-population EDA job processed all **30,490 series × 1,941 daily columns** from the original M5 evaluation matrix. The source-processing run is available [here](https://github.com/Harshithpatali/retail-demand-inventory-optimization/actions/runs/43025180207).
 
 **Important:** EDA generation succeeded in the workflow. The workflow's commit step initially reported a clean working tree, so the EDA report files were not yet confirmed in GitHub at that run. A follow-up workflow change explicitly stages those outputs; check the latest Actions run before relying on the report links.
+
+ 
+## Evaluation snapshot and business interpretation
+
+The current four-origin refit benchmark covers 200 selected item-store series and 22,400 rolling one-step observations. XGBoost achieved WAPE 29.11%, compared with 34.49% for the 7-day moving average, 38.62% for naive and 40.29% for seasonal naive. On the final 28-day inventory simulation, the forecast-driven policy reduced simulated cost by 17.62%, reduced stockout units by 20.05%, reduced average ending inventory by 26.70%, and improved fill rate by 0.32 percentage points versus the historical-demand policy.
+
+These are historical benchmark and simulation results under stated cost assumptions—not realized retailer savings. The tested panel is a deterministic subset of 200 series, not all 30,490 M5 series. Read [Empirical Evaluation Results](docs/empirical_evaluation_results.md), [Decision Brief](docs/DECISION_BRIEF.md) and [Model Card](docs/model_card.md) together before quoting results.
+
+## Reproducibility
+
+```bash
+pip install -r requirements.txt
+pytest -q
+python -m scripts.train_models
+python -m scripts.estimate_uncertainty
+python -m scripts.run_forecast_driven_inventory
+```
+
+The complete M5 source archive is obtained through the documented private Supabase Storage workflow; credentials belong in GitHub Actions secrets, never in source control. See [Data README](data/README.md) and the workflow documentation.
