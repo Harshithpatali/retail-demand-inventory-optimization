@@ -497,3 +497,8 @@ python -m scripts.run_forecast_driven_inventory
 ```
 
 The complete M5 source archive is obtained through the documented private Supabase Storage workflow; credentials belong in GitHub Actions secrets, never in source control. See [Data README](data/README.md) and the workflow documentation.
+
+
+## Reproducible experiment report
+
+See [Portfolio Experiment Report](docs/PORTFOLIO_EXPERIMENT_REPORT.md) for the rolling-origin forecast comparison, paired series-cluster uncertainty, intermittent-demand comparison, inventory-policy trade-offs and explicit scope limitations. The report reconciles to the later detailed empirical evaluation; an earlier business-impact CSV is flagged as a separate run until its provenance is reconciled.
