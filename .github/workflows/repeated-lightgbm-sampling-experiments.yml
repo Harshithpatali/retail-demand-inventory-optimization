@@ -1,0 +1,66 @@
+name: repeated-lightgbm-sampling-experiments
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: repeated-lightgbm-sampling-experiments
+  cancel-in-progress: false
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lightgbm-repeated-sampling-experiments
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install training dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt matplotlib==3.9.3
+      - name: Download original M5 archive from private Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_BUCKET: m5-raw-data
+          M5_ZIP_PATH: ${{ secrets.M5_ZIP_PATH }}
+          KEEP_M5_ARCHIVE: "1"
+        run: python -m scripts.download_m5_from_supabase
+      - name: Run 20 independent stratified LightGBM experiments
+        run: python -m scripts.run_repeated_lightgbm_experiments --runs 20 --sample-rows 200000
+      - name: Verify results and candidate isolation
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+          out=Path("reports/full_population_forecasting/repeated_lightgbm_experiments")
+          metrics=pd.read_csv(out/"experiment_metrics.csv")
+          meta=json.loads((out/"candidate_model_metadata.json").read_text())
+          test=pd.read_csv(out/"selected_model_test_metrics.csv")
+          candidate=Path("models/full_population/candidates/repeated_200k_lightgbm_candidate.txt")
+          assert len(metrics)==20
+          assert set(metrics.sample_rows.astype(int))=={200000}
+          assert meta["status"]=="candidate_not_promoted"
+          assert candidate.is_file() and candidate.stat().st_size>0
+          assert test.iloc[0]["split"]=="test"
+          print("Verified 20 x 200,000-row runs; selected run:",meta["selected_run"])
+          print("Untouched test WAPE:",test.iloc[0]["WAPE"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repeated-lightgbm-experiment-results
+          path: |
+            reports/full_population_forecasting/repeated_lightgbm_experiments/
+            models/full_population/candidates/repeated_200k_lightgbm_candidate.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove raw source material
+        if: always()
+        run: rm -rf data/raw .m5_download
