@@ -209,6 +209,7 @@ def main():
   "features":FEATURES,"future_covariates":"weekday/month known; future events and SNAP unavailable and set to zero",
   "limitations":"M5 records sales, not latent unconstrained demand; zeros may include stockouts. Future price/event/SNAP values are unavailable beyond the source calendar."}
  (OUT/"forecast_run_metadata.json").write_text(json.dumps(metadata,indent=2))
+ examples.unlink(missing_ok=True)
  print(metrics_df[metrics_df.segment_type.eq("overall")].to_string(index=False))
  print(json.dumps(metadata,indent=2))
 
