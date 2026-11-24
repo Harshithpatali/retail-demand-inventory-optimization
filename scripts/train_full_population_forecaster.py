@@ -73,7 +73,9 @@ def build_examples(path,date_cols,cal,origins,out):
       "month":np.full(n,int(cr["month"]),dtype=np.int8),
       "is_weekend":np.full(n,int(cr["wday"] in (1,2)),dtype=np.int8),
       "event_flag":np.full(n,ev,dtype=np.int8),"snap_flag":snap,
-      "target":v[:,ti],"seasonal_naive":v[:,ti-7],\n      "origin_index":np.full(n,origin,dtype=np.int16),
+      "target":v[:,ti],"seasonal_naive":v[:,ti-7],
+      "train_sample":(pd.util.hash_pandas_object(chunk["id"],index=False).to_numpy(dtype=np.uint64)%4==0),
+      "origin_index":np.full(n,origin,dtype=np.int16),
       "store_segment":store,"state_segment":state,"category_segment":cat,"department_segment":dept}
      frame=pd.DataFrame(data)
      table=pa.Table.from_pandas(frame,preserve_index=False)
@@ -94,14 +96,35 @@ def make_model():
   num_leaves=63,min_child_samples=100,subsample=.85,colsample_bytree=.85,
   reg_lambda=2.0,n_jobs=2,random_state=42,verbosity=-1)
 
-def fit(frame,mask):
+def fit(frame,mask,levels):
  d=frame.loc[mask]
  X=d[FEATURES].copy()
- for c in CATS: X[c]=X[c].astype("category")
+ category_sizes={"item_code":len(levels["item_id"]),"store_code":len(levels["store_id"]),
+  "dept_code":len(levels["dept_id"]),"cat_code":len(levels["cat_id"]),
+  "state_code":len(levels["state_id"])}
+ for c in CATS: X[c]=pd.Categorical(X[c],categories=range(category_sizes[c]))
  model=make_model()
  model.fit(X,d.target.astype(np.float32),categorical_feature=CATS)
  del d,X; gc.collect()
  return model
+
+def load_model_frame(path,train_origins,val_origin,test_origin,batch_size=65536):
+ # Stream Parquet row groups. Keep a deterministic 25% series sample for training,
+ # but retain every row from validation and test origins for honest evaluation.
+ train_parts=[]; eval_parts=[]; parquet=pq.ParquetFile(path)
+ for batch in parquet.iter_batches(batch_size=batch_size):
+  part=batch.to_pandas()
+  train=part[part.origin_index.isin(train_origins)&part.train_sample]
+  evaluate=part[part.origin_index.isin([val_origin,test_origin])]
+  if not train.empty: train_parts.append(train)
+  if not evaluate.empty: eval_parts.append(evaluate)
+  del part,train,evaluate
+ train=pd.concat(train_parts,ignore_index=True)
+ evaluate=pd.concat(eval_parts,ignore_index=True)
+ del train_parts,eval_parts; gc.collect()
+ result=pd.concat([train,evaluate],ignore_index=True)
+ del train,evaluate; gc.collect()
+ return result
 
 def metrics(y,p,frame,split,levels):
  y=np.asarray(y,dtype=float); p=np.clip(np.asarray(p,dtype=float),0,None)
@@ -146,7 +169,7 @@ def predict_future(path,date_cols,cal,model,levels):
     "cv2_90":np.divide(hist.std(axis=1),mean,out=np.zeros(n,dtype=np.float32),where=mean>0)**2})
    for h,dt in enumerate(dates,1):
     X=base.copy()
-    X["horizon"]=h; X["day_of_week"]=((dt.dayofweek+5)%7)+1
+    X["horizon"]=h; X["day_of_week"]=((dt.dayofweek+2)%7)+1
     X["month"]=dt.month; X["is_weekend"]=int(dt.dayofweek>=5)
     X["event_flag"]=0; X["snap_flag"]=0
     category_sizes={"item_code":len(levels["item_id"]),"store_code":len(levels["store_id"]),
@@ -182,15 +205,18 @@ def main():
  origins=train_origins+[val_origin,test_origin]
  examples=OUT/"training_examples.parquet"
  total,levels=build_examples(path,dates,cal,origins,examples)
- frame=pd.read_parquet(examples)
+ frame=load_model_frame(examples,train_origins,val_origin,test_origin)
  train_mask=frame.origin_index.isin(train_origins)
  val_mask=frame.origin_index.eq(val_origin)
  test_mask=frame.origin_index.eq(test_origin)
- model=fit(frame,train_mask)
+ model=fit(frame,train_mask,levels)
  rows=[]
  for label,mask in (("validation",val_mask),("test",test_mask)):
   d=frame.loc[mask]; X=d[FEATURES].copy()
-  for c in CATS:X[c]=X[c].astype("category")
+  for c in CATS:category_sizes={"item_code":len(levels["item_id"]),"store_code":len(levels["store_id"]),
+   "dept_code":len(levels["dept_id"]),"cat_code":len(levels["cat_id"]),
+   "state_code":len(levels["state_id"])}
+  for c in CATS:X[c]=pd.Categorical(X[c],categories=range(category_sizes[c]))
   pred=np.clip(model.predict(X),0,None)
   rows.extend(metrics(d.target,pred,d,label,levels))
   rows.extend(metrics(d.target,d.seasonal_naive,d,label+"_seasonal_naive",levels))
@@ -198,7 +224,7 @@ def main():
  metrics_df=pd.DataFrame(rows)
  metrics_df.to_csv(OUT/"full_population_forecast_metrics.csv",index=False)
  # Final production fit uses all six historical origins, including the now-observed holdout window.
- final=fit(frame,frame.index==frame.index)
+ final=fit(frame,frame.index==frame.index,levels)
  final.booster_.save_model(str(MODEL/"m5_global_lightgbm_28d.txt"))
  predict_future(path,dates,cal,final,levels)
  last=pd.to_datetime(cal.iloc[-1].date)
@@ -208,7 +234,9 @@ def main():
   "feature_example_rows":total,"last_observed_date":str(last.date()),
   "forecast_start":str((last+pd.Timedelta(days=1)).date()),
   "forecast_end":str((last+pd.Timedelta(days=H)).date()),
-  "forecast_rows":count*H,"training_population":"all 30,490 item-store series",
+  "forecast_rows":count*H,"training_population":"all 30,490 series represented in inference; deterministic 25% series sample used for model fitting",
+  "training_sampling":"25% stable hash sample across series; all rows from validation/test origins retained",
+  "training_feature_rows_in_memory":int(train_mask.sum()),
   "features":FEATURES,"future_covariates":"weekday/month known; future events and SNAP unavailable and set to zero",
   "limitations":"M5 records sales, not latent unconstrained demand; zeros may include stockouts. Future price/event/SNAP values are unavailable beyond the source calendar."}
  (OUT/"forecast_run_metadata.json").write_text(json.dumps(metadata,indent=2))
