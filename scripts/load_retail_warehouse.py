@@ -74,7 +74,7 @@ def main() -> None:
         raise ValueError("Refusing to publish an empty retail panel.")
     dataset_version = _version(SOURCE)
     source_bucket = os.getenv("SUPABASE_BUCKET", "m5-raw-data")
-    source_object = os.getenv("M5_ZIP_PATH", "m5-forecasting-accuracy.zip")
+    source_object = os.getenv("M5_ZIP_PATH", "").strip() or "m5-forecasting-accuracy.zip"
     start_date = frame["calendar_date"].min()
     end_date = frame["calendar_date"].max()
     row_count = len(frame)
