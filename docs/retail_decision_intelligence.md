@@ -13,6 +13,8 @@ The private `retail` schema contains:
 - `model_evaluation`: rolling-origin metrics by model, fold and demand segment.
 - `forecast_runs`, `forecast_predictions`: optional persisted forecast vintages and intervals.
 - `inventory_scenarios`: explicit scenario assumptions and recommendations; not observed inventory.
+- `forecast_interval_evaluation`: nominal vs empirical interval coverage and width.
+- `inventory_sensitivity`: cost, lead-time and service-level simulation summaries.
 
 Views:
 - `v_product_store_performance`
@@ -31,7 +33,9 @@ python -m scripts.load_retail_warehouse
 The loader validates required columns, stages data with COPY, upserts dimensions, and publishes an immutable dataset run. Re-running the same Parquet artifact replaces only the matching version. It never downloads or stores a second copy of the source ZIP.
 
 ## API configuration
-Set Render environment variable `SUPABASE_DB_URL` to the same private database connection string. The analytics API opens read-only transactions. If it is absent, existing forecast and inventory routes continue to work; analytics routes return HTTP 503 with a configuration message.
+Set Render environment variable `SUPABASE_DB_URL` to the same private database connection string. Also add it as a GitHub Actions secret so the M5 panel loader and empirical-evaluation workflow can publish results. The analytics API opens read-only transactions. If it is absent, existing forecast and inventory routes continue to work; analytics routes return HTTP 503 with a configuration message.
+
+The API exposes SQL analytics, model evaluation, interval calibration and statistical diagnostics. The inventory workspace can persist an explicit scenario with user-entered costs and on-hand stock; these values remain assumptions, not observed M5 data.
 
 ## Analytical limitations
 - M5 has sales, prices, calendar events and SNAP indicators; it does not contain on-hand inventory, supplier lead times, holding costs, order costs or lost-sales costs.
