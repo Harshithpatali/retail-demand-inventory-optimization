@@ -233,15 +233,10 @@ def main():
  examples=OUT/"training_examples.parquet"
  total,levels=build_examples(path,dates,cal,origins,examples)
  memory_checkpoint("after_feature_generation")
- frame=load_model_frame(examples,train_origins,val_origin,test_origin)
- memory_checkpoint("after_loading_training_and_eval_frame")
- train_mask=frame.origin_index.isin(train_origins)
- val_mask=frame.origin_index.eq(val_origin)
- test_mask=frame.origin_index.eq(test_origin)
  # Compare nested stable-hash samples on the same complete validation population.
  # Choose by WAPE with a modest penalty for absolute aggregate bias; test data is
  # not used for model selection.
- comparison=[]; rows=[]; best_score=float("inf"); best_pct=None; best_model_path=MODEL/"selected_validation_model.txt"
+ comparison=[]; rows=[]; best_score=float("inf"); best_pct=None
  for sample_pct in (25,50,75,100):
   memory_checkpoint(f"before_{sample_pct}pct_sample")
   frame=load_model_frame(examples,train_origins,val_origin,test_origin,sample_pct)
@@ -260,7 +255,6 @@ def main():
   print(f"Sample {sample_pct}% validation: WAPE={overall['WAPE']:.4f}, bias={overall['bias']:.4f}, score={score:.4f}",flush=True)
   if score<best_score:
    best_score=score; best_pct=sample_pct
-   model.booster_.save_model(str(best_model_path))
   del model,val,val_pred,val_metrics,frame
   gc.collect()
   memory_checkpoint(f"after_{sample_pct}pct_sample")
