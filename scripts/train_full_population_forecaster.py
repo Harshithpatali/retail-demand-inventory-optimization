@@ -82,7 +82,7 @@ def build_examples(path,date_cols,cal,origins,out):
       "is_weekend":np.full(n,int(cr["wday"] in (1,7)),dtype=np.int8),
       "event_flag":np.full(n,ev,dtype=np.int8),"snap_flag":snap,
       "target":v[:,ti],"seasonal_naive":v[:,ti-7],
-      "train_sample":(pd.util.hash_pandas_object(chunk["id"],index=False).to_numpy(dtype=np.uint64)%4==0),
+      "sample_bucket":(pd.util.hash_pandas_object(chunk["id"],index=False).to_numpy(dtype=np.uint64)%100).astype(np.uint8),
       "origin_index":np.full(n,origin,dtype=np.int16),
       "store_segment":store,"state_segment":state,"category_segment":cat,"department_segment":dept}
      frame=pd.DataFrame(data)
@@ -116,13 +116,15 @@ def fit(frame,mask,levels):
  del d,X; gc.collect()
  return model
 
-def load_model_frame(path,train_origins,val_origin,test_origin,batch_size=65536):
- # Stream Parquet row groups. Keep a deterministic 25% series sample for training,
- # but retain every row from validation and test origins for honest evaluation.
+def load_model_frame(path,train_origins,val_origin,test_origin,sample_pct,batch_size=65536):
+ # Stable hash buckets define nested, reproducible series samples. Evaluation rows
+ # always include the complete population and are identical across experiments.
  train_parts=[]; eval_parts=[]; parquet=pq.ParquetFile(path)
- for batch in parquet.iter_batches(batch_size=batch_size):
+ columns=FEATURES+["target","seasonal_naive","origin_index","sample_bucket",
+  "store_segment","state_segment","category_segment","department_segment"]
+ for batch in parquet.iter_batches(batch_size=batch_size,columns=columns):
   part=batch.to_pandas()
-  train=part[part.origin_index.isin(train_origins)&part.train_sample]
+  train=part[part.origin_index.isin(train_origins)&(part.sample_bucket < sample_pct)]
   evaluate=part[part.origin_index.isin([val_origin,test_origin])]
   if not train.empty: train_parts.append(train)
   if not evaluate.empty: eval_parts.append(evaluate)
@@ -134,13 +136,14 @@ def load_model_frame(path,train_origins,val_origin,test_origin,batch_size=65536)
  del train,evaluate; gc.collect()
  return result
 
-def metrics(y,p,frame,split,levels):
- y=np.asarray(y,dtype=float); p=np.clip(np.asarray(p,dtype=float),0,None)
+def metrics(y,p,frame,split,levels,model_name):
+ y=np.asarray(y,dtype=np.float64); p=np.clip(np.asarray(p,dtype=np.float64),0,None)
  rows=[]
  def add(kind,name,mask):
   if not mask.any():return
   a=y[mask]; b=p[mask]
-  rows.append({"split":split,"segment_type":kind,"segment":name,"observations":int(mask.sum()),
+  rows.append({"model":model_name,"split":split,"segment_type":kind,"segment":name,
+   "observations":int(mask.sum()),"actual_units":float(a.sum()),"forecast_units":float(b.sum()),
    "MAE":float(np.abs(a-b).mean()),"RMSE":float(np.sqrt(np.mean((a-b)**2))),
    "WAPE":float(np.abs(a-b).sum()/max(np.abs(a).sum(),1e-9)),
    "bias":float((b-a).sum()/max(a.sum(),1e-9))})
@@ -151,6 +154,15 @@ def metrics(y,p,frame,split,levels):
   names=levels[kind]
   for code,name in enumerate(names):add(kind,name,codes==code)
  return rows
+
+def predict_for_frame(model,frame,mask,levels):
+ d=frame.loc[mask]; X=d[FEATURES].copy()
+ category_sizes={"item_code":len(levels["item_id"]),"store_code":len(levels["store_id"]),
+  "dept_code":len(levels["dept_id"]),"cat_code":len(levels["cat_id"]),
+  "state_code":len(levels["state_id"])}
+ for c in CATS:X[c]=pd.Categorical(X[c],categories=range(category_sizes[c]))
+ pred=np.clip(model.predict(X),0,None)
+ return d,pred
 
 def predict_future(path,date_cols,cal,model,levels):
  memory_checkpoint("before_future_inference")
@@ -226,24 +238,55 @@ def main():
  train_mask=frame.origin_index.isin(train_origins)
  val_mask=frame.origin_index.eq(val_origin)
  test_mask=frame.origin_index.eq(test_origin)
- model=fit(frame,train_mask,levels)
- memory_checkpoint("after_model_fit")
- rows=[]
- for label,mask in (("validation",val_mask),("test",test_mask)):
-  d=frame.loc[mask]; X=d[FEATURES].copy()
-  for c in CATS:category_sizes={"item_code":len(levels["item_id"]),"store_code":len(levels["store_id"]),
-   "dept_code":len(levels["dept_id"]),"cat_code":len(levels["cat_id"]),
-   "state_code":len(levels["state_id"])}
-  for c in CATS:X[c]=pd.Categorical(X[c],categories=range(category_sizes[c]))
-  pred=np.clip(model.predict(X),0,None)
-  rows.extend(metrics(d.target,pred,d,label,levels))
-  rows.extend(metrics(d.target,d.seasonal_naive,d,label+"_seasonal_naive",levels))
-  del d,X,pred;gc.collect()
+ # Compare nested stable-hash samples on the same complete validation population.
+ # Choose by WAPE with a modest penalty for absolute aggregate bias; test data is
+ # not used for model selection.
+ comparison=[]; rows=[]; best_score=float("inf"); best_pct=None; best_model_path=MODEL/"selected_validation_model.txt"
+ for sample_pct in (25,50,75,100):
+  memory_checkpoint(f"before_{sample_pct}pct_sample")
+  frame=load_model_frame(examples,train_origins,val_origin,test_origin,sample_pct)
+  train_mask=frame.origin_index.isin(train_origins)
+  val_mask=frame.origin_index.eq(val_origin)
+  test_mask=frame.origin_index.eq(test_origin)
+  model=fit(frame,train_mask,levels)
+  val,val_pred=predict_for_frame(model,frame,val_mask,levels)
+  val_metrics=metrics(val.target,val_pred,val,"validation",levels,f"LightGBM_{sample_pct}pct")
+  overall=next(x for x in val_metrics if x["segment_type"]=="overall")
+  score=overall["WAPE"]+0.15*abs(overall["bias"])
+  comparison.append({"training_sample_pct":sample_pct,"training_series":int(30490*sample_pct/100),
+   "training_rows":int(train_mask.sum()),"validation_WAPE":overall["WAPE"],
+   "validation_MAE":overall["MAE"],"validation_RMSE":overall["RMSE"],
+   "validation_bias":overall["bias"],"selection_score":score})
+  print(f"Sample {sample_pct}% validation: WAPE={overall['WAPE']:.4f}, bias={overall['bias']:.4f}, score={score:.4f}",flush=True)
+  if score<best_score:
+   best_score=score; best_pct=sample_pct
+   model.booster_.save_model(str(best_model_path))
+  del model,val,val_pred,val_metrics,frame
+  gc.collect()
+  memory_checkpoint(f"after_{sample_pct}pct_sample")
+ comparison_df=pd.DataFrame(comparison)
+ comparison_df.to_csv(OUT/"training_sample_comparison.csv",index=False)
+ if best_pct is None:raise RuntimeError("No training sample produced a validation model.")
+ # Refit the selected sample size once, then evaluate the untouched test origin.
+ frame=load_model_frame(examples,train_origins,val_origin,test_origin,best_pct)
+ train_mask=frame.origin_index.isin(train_origins)
+ val_mask=frame.origin_index.eq(val_origin)
+ test_mask=frame.origin_index.eq(test_origin)
+ selected=fit(frame,train_mask,levels)
+ selected.booster_.save_model(str(MODEL/"m5_global_lightgbm_selected.txt"))
+ test,test_pred=predict_for_frame(selected,frame,test_mask,levels)
+ rows.extend(metrics(test.target,test_pred,test,"test",levels,f"LightGBM_{best_pct}pct_selected"))
+ # Matched simple baselines evaluated on the same untouched test observations.
+ for baseline,col in (("Seasonal naive","seasonal_naive"),("Naive last value","lag_1"),("7-day moving average","mean_7")):
+  rows.extend(metrics(test.target,test[col],test,"test",levels,baseline))
  metrics_df=pd.DataFrame(rows)
  metrics_df.to_csv(OUT/"full_population_forecast_metrics.csv",index=False)
- # Final production fit uses all six historical origins, including the now-observed holdout window.
+ # Production model is trained on all historical origins after evaluation is complete.
  final=fit(frame,frame.index==frame.index,levels)
  final.booster_.save_model(str(MODEL/"m5_global_lightgbm_28d.txt"))
+ del selected,test,test_pred,frame
+ gc.collect()
+ memory_checkpoint("after_selected_test_evaluation")
  predict_future(path,dates,cal,final,levels)
  last=pd.to_datetime(cal.iloc[-1].date)
  metadata={"model":"Global LightGBM Poisson regressor","population_series":count,
@@ -252,14 +295,15 @@ def main():
   "feature_example_rows":total,"last_observed_date":str(last.date()),
   "forecast_start":str((last+pd.Timedelta(days=1)).date()),
   "forecast_end":str((last+pd.Timedelta(days=H)).date()),
-  "forecast_rows":count*H,"peak_process_rss_gb":max((x["rss_gb"] for x in MEMORY_LOG),default=0),"memory_checkpoints":MEMORY_LOG,"training_population":"all 30,490 series represented in inference; deterministic 25% series sample used for model fitting",
-  "training_sampling":"25% stable hash sample across series; all rows from validation/test origins retained",
+  "forecast_rows":count*H,"peak_process_rss_gb":max((x["rss_gb"] for x in MEMORY_LOG),default=0),"memory_checkpoints":MEMORY_LOG,"training_population":"all 30,490 series represented in inference; validation-selected nested stable-hash sample used for production model fitting",
+  "training_sampling":"Compared 25%, 50%, 75%, and 100% stable-hash series samples on identical validation origins; selected using WAPE plus bias penalty. Test origin evaluated only after selection.",
+  "selected_training_sample_pct":best_pct,"training_sample_comparison":comparison,
   "training_feature_rows_in_memory":int(train_mask.sum()),
   "features":FEATURES,"future_covariates":"weekday/month known; future events and SNAP unavailable and set to zero",
   "limitations":"M5 records sales, not latent unconstrained demand; zeros may include stockouts. Future price/event/SNAP values are unavailable beyond the source calendar."}
  (OUT/"forecast_run_metadata.json").write_text(json.dumps(metadata,indent=2))
  examples.unlink(missing_ok=True)
- print(metrics_df[metrics_df.segment_type.eq("overall")].to_string(index=False))
+ print("Training sample comparison:\\n",comparison_df.to_string(index=False))\n print("Test metrics:\\n",metrics_df[metrics_df.segment_type.eq("overall")].to_string(index=False))
  print(json.dumps(metadata,indent=2))
 
 if __name__=="__main__":main()
