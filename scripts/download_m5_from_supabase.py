@@ -146,7 +146,8 @@ def main() -> None:
             _extract_required_tables(archive_path, RAW_DIR)
             print("Only the selected sales matrix, calendar and price table were extracted.")
     finally:
-        if work_dir.exists():
+        # Retain the ZIP until the workflow has copied it to Cloudflare R2.
+        if work_dir.exists() and os.getenv("KEEP_M5_ARCHIVE", "0") != "1":
             shutil.rmtree(work_dir)
 
 
