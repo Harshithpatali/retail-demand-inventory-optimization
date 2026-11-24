@@ -97,7 +97,7 @@ def main() -> None:
     )
     segment_rows = []
     for label, group in segment.groupby("demand_segment", observed=True):
-        segment_rows.append({"demand_segment": str(label), **evaluate(group.demand, group.prediction)})
+        segment_rows.append({"model": model_name, "demand_segment": str(label), "sample_count": int(len(group)), **evaluate(group.demand, group.prediction)})
     pd.DataFrame(segment_rows).to_csv(out / "forecast_metrics_by_demand_segment.csv", index=False)
 
     print("Forecast metrics (held-out chronological window)")
