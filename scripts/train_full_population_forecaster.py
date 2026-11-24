@@ -1,6 +1,7 @@
 """Global 28-day M5 LightGBM demand forecaster for all 30,490 item-store series."""
 from __future__ import annotations
-import gc, json
+import gc, json, os
+import psutil
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -13,7 +14,14 @@ RAW=ROOT/"data/raw"
 OUT=ROOT/"reports/full_population_forecasting"
 MODEL=ROOT/"models/full_population"
 H=28
-CHUNK=256
+CHUNK=128
+PROCESS=psutil.Process(os.getpid())
+MEMORY_LOG=[]
+def memory_checkpoint(label):
+ rss=PROCESS.memory_info().rss/(1024**3)
+ MEMORY_LOG.append({"stage":label,"rss_gb":round(rss,3)})
+ print(f"[memory] {label}: RSS={rss:.2f} GiB",flush=True)
+ return rss
 FEATURES=["item_code","store_code","dept_code","cat_code","state_code","horizon",
  "day_of_week","month","is_weekend","event_flag","snap_flag","lag_1","lag_7",
  "lag_14","lag_28","lag_56","lag_364","mean_7","mean_28","mean_56","mean_90",
@@ -71,7 +79,7 @@ def build_examples(path,date_cols,cal,origins,out):
      data={**shared,"horizon":np.full(n,h,dtype=np.int8),
       "day_of_week":np.full(n,int(cr["wday"]),dtype=np.int8),
       "month":np.full(n,int(cr["month"]),dtype=np.int8),
-      "is_weekend":np.full(n,int(cr["wday"] in (1,2)),dtype=np.int8),
+      "is_weekend":np.full(n,int(cr["wday"] in (1,7)),dtype=np.int8),
       "event_flag":np.full(n,ev,dtype=np.int8),"snap_flag":snap,
       "target":v[:,ti],"seasonal_naive":v[:,ti-7],
       "train_sample":(pd.util.hash_pandas_object(chunk["id"],index=False).to_numpy(dtype=np.uint64)%4==0),
@@ -145,6 +153,7 @@ def metrics(y,p,frame,split,levels):
  return rows
 
 def predict_future(path,date_cols,cal,model,levels):
+ memory_checkpoint("before_future_inference")
  maps={c:{v:i for i,v in enumerate(vals)} for c,vals in levels.items()}
  last=pd.to_datetime(cal.iloc[-1].date)
  dates=pd.date_range(last+pd.Timedelta(days=1),periods=H)
@@ -169,7 +178,7 @@ def predict_future(path,date_cols,cal,model,levels):
     "cv2_90":np.divide(hist.std(axis=1),mean,out=np.zeros(n,dtype=np.float32),where=mean>0)**2})
    for h,dt in enumerate(dates,1):
     X=base.copy()
-    X["horizon"]=h; X["day_of_week"]=((dt.dayofweek+2)%7)+1
+    X["horizon"]=h; X["day_of_week"]=((dt.dayofweek+1)%7)+1
     X["month"]=dt.month; X["is_weekend"]=int(dt.dayofweek>=5)
     X["event_flag"]=0; X["snap_flag"]=0
     category_sizes={"item_code":len(levels["item_id"]),"store_code":len(levels["store_id"]),
@@ -189,10 +198,16 @@ def predict_future(path,date_cols,cal,model,levels):
    del v,chunk,base
  finally:
   if writer:writer.close()
- print(f"Forecast output: {count:,} rows, {out.stat().st_size/1e6:.1f} MB")
+ expected=30490*H
+ if count != expected: raise RuntimeError(f"Forecast row count mismatch: expected {expected:,}, got {count:,}")
+ check=pq.ParquetFile(out)
+ if check.metadata.num_rows != expected: raise RuntimeError(f"Parquet metadata row count mismatch: {check.metadata.num_rows:,}")
+ print(f"Forecast output verified: {count:,} rows, {out.stat().st_size/1e6:.1f} MB")
+ memory_checkpoint("after_future_inference")
 
 def main():
  OUT.mkdir(parents=True,exist_ok=True); MODEL.mkdir(parents=True,exist_ok=True)
+ memory_checkpoint("start")
  path=source_file(); columns=list(pd.read_csv(path,nrows=0).columns)
  dates=[c for c in columns if c.startswith("d_")]
  if len(dates)<500:raise ValueError(f"Unexpected M5 daily history: {len(dates)} columns")
@@ -205,11 +220,14 @@ def main():
  origins=train_origins+[val_origin,test_origin]
  examples=OUT/"training_examples.parquet"
  total,levels=build_examples(path,dates,cal,origins,examples)
+ memory_checkpoint("after_feature_generation")
  frame=load_model_frame(examples,train_origins,val_origin,test_origin)
+ memory_checkpoint("after_loading_training_and_eval_frame")
  train_mask=frame.origin_index.isin(train_origins)
  val_mask=frame.origin_index.eq(val_origin)
  test_mask=frame.origin_index.eq(test_origin)
  model=fit(frame,train_mask,levels)
+ memory_checkpoint("after_model_fit")
  rows=[]
  for label,mask in (("validation",val_mask),("test",test_mask)):
   d=frame.loc[mask]; X=d[FEATURES].copy()
@@ -234,7 +252,7 @@ def main():
   "feature_example_rows":total,"last_observed_date":str(last.date()),
   "forecast_start":str((last+pd.Timedelta(days=1)).date()),
   "forecast_end":str((last+pd.Timedelta(days=H)).date()),
-  "forecast_rows":count*H,"training_population":"all 30,490 series represented in inference; deterministic 25% series sample used for model fitting",
+  "forecast_rows":count*H,"peak_process_rss_gb":max((x["rss_gb"] for x in MEMORY_LOG),default=0),"memory_checkpoints":MEMORY_LOG,"training_population":"all 30,490 series represented in inference; deterministic 25% series sample used for model fitting",
   "training_sampling":"25% stable hash sample across series; all rows from validation/test origins retained",
   "training_feature_rows_in_memory":int(train_mask.sum()),
   "features":FEATURES,"future_covariates":"weekday/month known; future events and SNAP unavailable and set to zero",
