@@ -11,6 +11,7 @@ on:
       - scripts/build_features.py
       - scripts/load_retail_warehouse.py
       - scripts/upload_m5_to_r2.py
+      - scripts/train_full_population_forecaster.py
       - .github/workflows/process-m5-source-data.yml
 
 permissions:
@@ -23,7 +24,7 @@ concurrency:
 jobs:
   process:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 180
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -54,6 +55,9 @@ jobs:
 
       - name: Run full-population EDA on original M5 sales matrix
         run: python -m scripts.run_full_population_eda
+
+      - name: Train and evaluate 28-day global model on all 30,490 series
+        run: python -m scripts.train_full_population_forecaster
 
       - name: Rebuild cleaned and feature datasets from original source
         run: |
