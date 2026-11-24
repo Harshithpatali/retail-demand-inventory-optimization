@@ -15,5 +15,5 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements-dev.txt pytest
-      - run: python -m compileall -q src scripts api tests
+      - run: python -m compileall -q src scripts api tests dashboard
       - run: pytest -q
