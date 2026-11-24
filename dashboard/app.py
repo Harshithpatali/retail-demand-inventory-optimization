@@ -792,6 +792,34 @@ def render_inventory(history: pd.DataFrame, store: str, item: str,
                              line=dict(color="#b58ae8", width=2)))
     st.plotly_chart(plot_layout(fig, 300), use_container_width=True, config=PLOT_CONFIG)
     st.caption("Sensitivity curve uses the same protection period (lead time + 7-day review cycle) and a normal-demand approximation; it is not a fresh inventory simulation. Open purchase orders are not included in the live inventory position.")
+    st.subheader("Save replenishment scenario")
+    st.caption("Record this recommendation with explicit cost assumptions. M5 does not provide observed on-hand stock or retailer cost data.")
+    cost_a, cost_b, cost_c = st.columns(3)
+    holding_cost = cost_a.number_input("Holding cost / unit / day", min_value=0.0, value=0.0, step=0.1, key=f"holding_cost_{store}_{item}")
+    ordering_cost = cost_b.number_input("Ordering cost / order", min_value=0.0, value=0.0, step=1.0, key=f"ordering_cost_{store}_{item}")
+    stockout_cost = cost_c.number_input("Stockout cost / unit", min_value=0.0, value=0.0, step=1.0, key=f"stockout_cost_{store}_{item}")
+    if st.button("Save scenario to Supabase", key=f"save_inventory_scenario_{store}_{item}"):
+        try:
+            response = httpx.post(
+                f"{API_BASE_URL}/analytics/inventory-scenarios",
+                json={
+                    "store_id": store, "item_id": item,
+                    "current_inventory": float(current),
+                    "lead_time_days": int(lead_time),
+                    "review_period_days": int(result["review_period_days"]),
+                    "service_level": float(service_level),
+                    "unit_holding_cost": float(holding_cost),
+                    "ordering_cost": float(ordering_cost),
+                    "stockout_cost": float(stockout_cost),
+                },
+                timeout=12.0,
+            )
+            response.raise_for_status()
+            saved = response.json()
+            st.success(f"Scenario saved · {saved.get('scenario_id')}")
+        except Exception as exc:
+            st.error(f"Could not save scenario: {exc}")
+
     with st.expander("Inventory policy details"):
         st.json(result)
 
