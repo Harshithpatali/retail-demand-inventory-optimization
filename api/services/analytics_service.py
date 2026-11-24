@@ -79,6 +79,25 @@ class AnalyticsService:
         """, tuple(params))
         return {"weekday": weekday, "month": month}
 
+    def interval_evaluation(self, limit: int = 20) -> list[dict]:
+        return self._query("""
+            select evaluation_run,nominal_coverage,empirical_coverage,mean_interval_width,
+                   observations,calibration_method,evaluated_at
+            from retail.forecast_interval_evaluation
+            order by evaluated_at desc, nominal_coverage limit %s
+        """, (max(1, min(int(limit), 100)),))
+
+    def inventory_sensitivity(self, limit: int = 100) -> list[dict]:
+        return self._query("""
+            select evaluation_run,lead_time_days,review_period_days,service_level_target,
+                   cost_scenario,series_count,baseline_total_cost,candidate_total_cost,
+                   baseline_stockout_units,candidate_stockout_units,baseline_fill_rate,
+                   candidate_fill_rate,baseline_average_inventory,candidate_average_inventory,
+                   cost_change_pct,stockout_change_pct,evaluated_at
+            from retail.inventory_sensitivity
+            order by evaluated_at desc, lead_time_days, service_level_target limit %s
+        """, (max(1, min(int(limit), 500)),))
+
     def model_evaluation(self, limit: int = 100) -> list[dict]:
         return self._query("""
             select evaluation_run,model_name,demand_segment,fold,sample_count,
