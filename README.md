@@ -502,3 +502,46 @@ The complete M5 source archive is obtained through the documented private Supaba
 ## Reproducible experiment report
 
 See [Portfolio Experiment Report](docs/PORTFOLIO_EXPERIMENT_REPORT.md) for the rolling-origin forecast comparison, paired series-cluster uncertainty, intermittent-demand comparison, inventory-policy trade-offs and explicit scope limitations. The report reconciles to the later detailed empirical evaluation; an earlier business-impact CSV is flagged as a separate run until its provenance is reconciled.
+
+
+## Full-population analytics from Cloudflare R2
+
+The dashboard now has a separate **Full Population (R2)** workspace. It reads the
+full-population EDA artifacts from the private `m5-retail-analytics` R2 bucket
+through FastAPI endpoints under `/population`:
+
+- `GET /population/status` — checks the R2 manifest and required EDA objects.
+- `GET /population/overview` — full-population headline metrics.
+- `GET /population/daily` — daily demand across the complete M5 population.
+- `GET /population/segments/{dimension}` — state, store, category or department summaries.
+- `GET /population/series` — paginated item-store metrics with optional filters.
+
+This design reads compact precomputed EDA outputs from R2; it does **not** load
+the approximately 59-million-cell daily long panel into Supabase or scan the
+full source matrix on each dashboard interaction. Supabase remains the SQL
+warehouse for the existing 200-series curated panel, model evaluations,
+conformal diagnostics and inventory sensitivity.
+
+### Render API environment
+
+Add the following environment variables to the existing Render API service
+(the same service that hosts `/health` and `/docs`):
+
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET=m5-retail-analytics`
+
+Use the same account ID and R2 S3 API credentials created for GitHub Actions.
+Keep the bucket private and scope the token to Object Read access for this API
+service if using a separate read-only token. Do not put R2 credentials in
+Streamlit Cloud; the dashboard talks to FastAPI, not directly to R2.
+
+After the Render service redeploys, verify:
+- `/population/status` reports `available: true`.
+- `/population/overview` reports the full series count and source date range.
+- `/docs` lists the `full-population R2 analytics` endpoints.
+
+The Full Population workspace is descriptive analytics for the full M5
+population. Existing forecasting, conformal interval evaluation and inventory
+simulation remain explicitly scoped to the selected 200-series modelling panel.
