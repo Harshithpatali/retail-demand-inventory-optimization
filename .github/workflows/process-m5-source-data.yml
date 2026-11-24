@@ -64,21 +64,30 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+          import pandas as pd
           import pyarrow.parquet as pq
           root = Path("reports/full_population_forecasting")
           forecast = root / "forecast_28d_all_series.parquet"
           metrics = root / "full_population_forecast_metrics.csv"
           metadata = root / "forecast_run_metadata.json"
-          for path in (forecast, metrics, metadata):
+          samples = root / "training_sample_comparison.csv"
+          for path in (forecast, metrics, metadata, samples):
               if not path.is_file() or path.stat().st_size == 0:
                   raise SystemExit(f"Missing or empty forecast artifact: {path}")
           meta = json.loads(metadata.read_text())
+          sample_frame = pd.read_csv(samples)
+          expected_samples = {25, 50, 75, 100}
+          if set(sample_frame["training_sample_pct"].astype(int)) != expected_samples:
+              raise SystemExit("Training sample comparison must contain 25/50/75/100% rows.")
+          if meta.get("selected_training_sample_pct") not in expected_samples:
+              raise SystemExit("Selected training sample percentage is missing or invalid.")
           expected = 30_490 * 28
           actual = pq.ParquetFile(forecast).metadata.num_rows
           if actual != expected or meta.get("forecast_rows") != expected:
               raise SystemExit(f"Expected {expected:,} forecasts; found parquet={actual:,}, metadata={meta.get('forecast_rows')}")
           print(f"Verified {actual:,} forecast rows for 30,490 series x 28 days.")
           print("Metrics:", metrics.stat().st_size, "bytes")
+          print("Validated sample-size experiment:", sorted(expected_samples), "selected:", meta["selected_training_sample_pct"])
           PY
 
       - name: Rebuild cleaned and feature datasets from original source
