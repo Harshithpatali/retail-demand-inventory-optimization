@@ -134,3 +134,27 @@ alter table retail.inventory_scenarios enable row level security;
 revoke all on all tables in schema retail from public,anon,authenticated;
 grant select,insert,update,delete on all tables in schema retail to service_role;
 grant usage,select on all sequences in schema retail to service_role;
+ 
+create table if not exists retail.forecast_interval_evaluation (
+  evaluation_run text not null, nominal_coverage numeric(5,4) not null,
+  empirical_coverage numeric(5,4) not null, mean_interval_width numeric(14,4) not null,
+  observations bigint not null check (observations >= 0), calibration_method text,
+  evaluated_at timestamptz not null default now(), metadata jsonb not null default '{}'::jsonb,
+  primary key (evaluation_run, nominal_coverage)
+);
+create table if not exists retail.inventory_sensitivity (
+  evaluation_run text not null, lead_time_days integer not null,
+  review_period_days integer not null, service_level_target numeric(5,4) not null,
+  cost_scenario text not null, series_count integer not null,
+  baseline_total_cost numeric(18,4), candidate_total_cost numeric(18,4),
+  baseline_stockout_units numeric(18,4), candidate_stockout_units numeric(18,4),
+  baseline_fill_rate numeric(8,5), candidate_fill_rate numeric(8,5),
+  baseline_average_inventory numeric(18,4), candidate_average_inventory numeric(18,4),
+  cost_change_pct numeric(12,5), stockout_change_pct numeric(12,5),
+  evaluated_at timestamptz not null default now(),
+  primary key (evaluation_run, lead_time_days, service_level_target, cost_scenario)
+);
+alter table retail.forecast_interval_evaluation enable row level security;
+alter table retail.inventory_sensitivity enable row level security;
+revoke all on retail.forecast_interval_evaluation, retail.inventory_sensitivity from public,anon,authenticated;
+grant select,insert,update,delete on retail.forecast_interval_evaluation, retail.inventory_sensitivity to service_role;
