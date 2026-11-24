@@ -13,6 +13,7 @@ from api.routes.series import router as series_router
 from api.routes.eda import router as eda_router
 from api.routes.network import router as network_router
 from api.routes.analytics import router as analytics_router
+from api.routes.population import router as population_router
 from api.routes.statistics import router as statistics_router
 from api.routes.inventory_scenarios import router as inventory_scenarios_router
 
@@ -40,6 +41,7 @@ for router in [
     eda_router,
     network_router,
     analytics_router,
+    population_router,
     statistics_router,
     inventory_scenarios_router,
 ]:
