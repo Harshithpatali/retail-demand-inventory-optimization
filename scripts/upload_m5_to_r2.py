@@ -44,6 +44,18 @@ def main():
   rec=upload(s3,pqpath,f"raw/extracted/{csv.stem}.parquet","application/vnd.apache.parquet")
   rec.update({"source_csv":csv.name,"rows":rows}); records.append(rec)
   print(f"Uploaded {csv.name}: {rows:,} rows")
+ # Full-population model artifacts: 30,490 series x 28 forecast days.
+ for rel in ("reports/full_population_forecasting/forecast_28d_all_series.parquet",
+             "reports/full_population_forecasting/full_population_forecast_metrics.csv",
+             "reports/full_population_forecasting/forecast_run_metadata.json",
+             "reports/full_population_forecasting/category_code_maps.json",
+             "models/full_population/m5_global_lightgbm_28d.txt"):
+  p=ROOT/rel
+  if p.is_file():
+   suffix=p.suffix.lower()
+   ctype={" .parquet":"application/vnd.apache.parquet",".parquet":"application/vnd.apache.parquet",
+          ".csv":"text/csv",".json":"application/json",".txt":"text/plain"}.get(suffix)
+   records.append(upload(s3,p,"processed/full_population_forecasting/"+p.name,ctype))
  for rel in ("data/interim/cleaned_sales.parquet","data/processed/forecast_features.parquet","data/interim/validation_report.json"):
   p=ROOT/rel
   if p.is_file():
