@@ -162,6 +162,7 @@ def main() -> None:
                 "test_rows": int(len(test)),
                 "series_count": int(test["id"].nunique()),
                 "model": name,
+                "bias": float((scored[name] - scored["demand"]).mean()),
                 **metrics,
             })
         prediction_frames.append(scored)
