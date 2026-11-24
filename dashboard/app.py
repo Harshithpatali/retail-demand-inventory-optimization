@@ -309,6 +309,157 @@ def load_statistics(store_id: str, item_id: str) -> dict[str, Any]:
     return response.json()
 
 
+
+@st.cache_data(ttl=300, max_entries=1, show_spinner=False)
+def load_population_overview() -> dict[str, Any]:
+    response = httpx.get(f"{API_BASE_URL}/population/overview", timeout=30.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=4, show_spinner=False)
+def load_population_segments(dimension: str) -> list[dict[str, Any]]:
+    response = httpx.get(f"{API_BASE_URL}/population/segments/{dimension}", timeout=30.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=32, show_spinner=False)
+def load_population_series(
+    store_id: str = "", state_id: str = "", cat_id: str = "",
+    dept_id: str = "", sort_by: str = "total_units",
+) -> dict[str, Any]:
+    params = {"limit": 250, "offset": 0, "sort_by": sort_by}
+    for key, value in (("store_id", store_id), ("state_id", state_id),
+                       ("cat_id", cat_id), ("dept_id", dept_id)):
+        if value:
+            params[key] = value
+    response = httpx.get(f"{API_BASE_URL}/population/series", params=params, timeout=45.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=1, show_spinner=False)
+def load_population_daily() -> list[dict[str, Any]]:
+    response = httpx.get(f"{API_BASE_URL}/population/daily", timeout=30.0)
+    response.raise_for_status()
+    return response.json()
+
+
+def render_full_population() -> None:
+    st.markdown('<div class="eyebrow">FULL ASSORTMENT / CLOUDFLARE R2 DATA LAKE</div>', unsafe_allow_html=True)
+    st.header("Full-population demand intelligence")
+    st.caption(
+        "Population-wide descriptive analytics from the complete M5 evaluation matrix. "
+        "This workspace reads precomputed full-population EDA artifacts from private Cloudflare R2; "
+        "it is separate from the 200-series forecasting and inventory experiments."
+    )
+    try:
+        overview = load_population_overview()
+        segments = load_population_segments("store_id")
+        daily = pd.DataFrame(load_population_daily())
+    except Exception as exc:
+        st.error(f"Full-population R2 analytics are unavailable: {exc}")
+        st.info(
+            "The API service needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY "
+            "and R2_BUCKET=m5-retail-analytics. The R2 EDA objects must include "
+            "full_eda_summary.json, series_metrics.csv and daily_demand_full_population.csv."
+        )
+        return
+
+    if not overview.get("available"):
+        st.warning("The full-population EDA manifest is not available yet.")
+        return
+
+    st.markdown(
+        '<span class="status-pill">● FULL POPULATION · R2</span> '
+        '<span class="small-mono">30K+ SERIES · NOT THE 200-SERIES MODEL PANEL</span>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f"Source: {overview.get('source')} · {overview.get('first_date')} to "
+        f"{overview.get('last_date')} · Storage: Cloudflare R2"
+    )
+    a, b, c, d = st.columns(4)
+    a.metric("Item-store series", f"{int(overview.get('series_count', 0)):,}")
+    b.metric("Historical daily columns", f"{int(overview.get('date_count', 0)):,}")
+    c.metric("Total recorded units", f"{int(overview.get('total_units', 0)):,}")
+    d.metric("Active series", f"{int(overview.get('active_series', 0)):,}")
+    e, f, g, h = st.columns(4)
+    e.metric("Inactive series", f"{int(overview.get('inactive_series', 0)):,}")
+    f.metric("Median zero-sales days", pct(overview.get("median_zero_day_fraction")))
+    g.metric("Mean zero-sales days", pct(overview.get("mean_zero_day_fraction")))
+    h.metric("Price records", f"{int(overview.get('price_records', 0)):,}")
+
+    st.divider()
+    left, right = st.columns([1.5, 1])
+    with left:
+        st.subheader("Daily demand · complete population")
+        if not daily.empty and {"date", "total_units"}.issubset(daily.columns):
+            daily["date"] = pd.to_datetime(daily["date"], errors="coerce")
+            daily["total_units"] = pd.to_numeric(daily["total_units"], errors="coerce")
+            fig = px.line(daily, x="date", y="total_units",
+                          color_discrete_sequence=["#52c7df"])
+            st.plotly_chart(plot_layout(fig, 340, legend=False), use_container_width=True, config=PLOT_CONFIG)
+        else:
+            st.info("Daily aggregate series is not present in the R2 EDA output.")
+    with right:
+        st.subheader("Demand concentration by store")
+        store_frame = pd.DataFrame(segments)
+        if not store_frame.empty:
+            store_frame = store_frame.sort_values("total_units", ascending=True).tail(12)
+            fig = px.bar(store_frame, x="total_units", y="store_id", orientation="h",
+                         color_discrete_sequence=["#f0b66b"])
+            st.plotly_chart(plot_layout(fig, 340, legend=False), use_container_width=True, config=PLOT_CONFIG)
+
+    st.divider()
+    st.subheader("Explore all item-store series")
+    states = sorted(pd.DataFrame(load_population_segments("state_id")).get("state_id", pd.Series(dtype=str)).dropna().astype(str).unique())
+    categories = sorted(pd.DataFrame(load_population_segments("cat_id")).get("cat_id", pd.Series(dtype=str)).dropna().astype(str).unique())
+    stores = sorted(store_frame.get("store_id", pd.Series(dtype=str)).dropna().astype(str).unique())
+    c1, c2, c3, c4 = st.columns(4)
+    state_filter = c1.selectbox("State", ["All"] + states, key="population_state")
+    store_filter = c2.selectbox("Store", ["All"] + stores, key="population_store")
+    category_filter = c3.selectbox("Category", ["All"] + categories, key="population_category")
+    sort_label = c4.selectbox(
+        "Rank by",
+        ["Total demand", "Mean daily demand", "Zero-demand fraction", "Demand CV²"],
+        key="population_sort",
+    )
+    sort_key = {
+        "Total demand": "total_units",
+        "Mean daily demand": "mean_daily_demand",
+        "Zero-demand fraction": "zero_day_fraction",
+        "Demand CV²": "demand_cv_squared",
+    }[sort_label]
+    try:
+        result = load_population_series(
+            store_id="" if store_filter == "All" else store_filter,
+            state_id="" if state_filter == "All" else state_filter,
+            cat_id="" if category_filter == "All" else category_filter,
+            sort_by=sort_key,
+        )
+        rows = pd.DataFrame(result.get("rows", []))
+        st.caption(f"Matching series: {int(result.get('total', 0)):,} · Showing up to 250 rows")
+        if not rows.empty:
+            display_cols = [c for c in [
+                "id", "state_id", "store_id", "item_id", "dept_id", "cat_id",
+                "total_units", "mean_daily_demand", "zero_day_fraction",
+                "average_demand_interval", "demand_cv_squared",
+            ] if c in rows.columns]
+            st.dataframe(rows[display_cols], use_container_width=True, hide_index=True)
+        else:
+            st.info("No item-store series match these filters.")
+    except Exception as exc:
+        st.warning(f"Series-level R2 query failed: {exc}")
+
+    st.caption(
+        "Interpretation: these are descriptive full-population EDA outputs. "
+        "They do not expand the model training set. Forecast accuracy, conformal diagnostics "
+        "and inventory-policy experiments remain scoped to the separately selected 200-series panel."
+    )
+
+
 @st.cache_data(ttl=120, max_entries=512, show_spinner=False)
 def load_scenario(
     store_id: str, item_id: str, service_level: float,
@@ -1379,7 +1530,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section-label">WORKSPACES</div>', unsafe_allow_html=True)
     page = st.radio(
         "WORKSPACE",
-        ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio", "SQL Analytics", "Statistical Lab", "Model Monitor"],
+        ["Overview", "Full Population (R2)", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio", "SQL Analytics", "Statistical Lab", "Model Monitor"],
         label_visibility="collapsed",
         key="workspace_navigation_v3",
     )
@@ -1401,6 +1552,15 @@ st.markdown(
     f'<div class="hero-sub">Decision support for demand planning, inventory risk and operating economics.</div></div>',
     unsafe_allow_html=True,
 )
+if page == "Full Population (R2)":
+    render_full_population()
+    st.markdown("---")
+    st.markdown(
+        f'<span class="small-mono">DATA SOURCE: PRIVATE CLOUDFLARE R2 &nbsp; · &nbsp; API: {API_BASE_URL}</span>',
+        unsafe_allow_html=True,
+    )
+    st.stop()
+
 try:
     with st.spinner("Loading selected demand series…"):
         history_payload = load_series(store, item)
