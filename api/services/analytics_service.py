@@ -66,13 +66,13 @@ class AnalyticsService:
             filters.append("item_id=%s"); params.append(item_id)
         where = (" where " + " and ".join(filters)) if filters else ""
         weekday = self._query(f"""
-            select weekday,wday,avg(avg_demand)::float8 as mean_demand,
+            select weekday,wday,(sum(avg_demand*observations)/nullif(sum(observations),0))::float8 as mean_demand,
                    sum(total_demand)::bigint as total_demand,sum(observations)::bigint as observations
             from retail.v_demand_seasonality{where}
             group by weekday,wday order by wday
         """, tuple(params))
         month = self._query(f"""
-            select month,avg(avg_demand)::float8 as mean_demand,
+            select month,(sum(avg_demand*observations)/nullif(sum(observations),0))::float8 as mean_demand,
                    sum(total_demand)::bigint as total_demand,sum(observations)::bigint as observations
             from retail.v_demand_seasonality{where}
             group by month order by month
