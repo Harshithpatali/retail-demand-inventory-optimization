@@ -129,8 +129,10 @@ def main() -> None:
     out = ROOT / "reports/tables"
     out.mkdir(parents=True, exist_ok=True)
     result.to_csv(out / "inventory_sensitivity_by_series.csv", index=False)
+    # Preserve review cadence in the aggregate output for warehouse publishing.
     summary = result.groupby(
-        ["lead_time_days", "service_level_target", "cost_scenario"], as_index=False
+        ["lead_time_days", "review_period_days", "service_level_target", "cost_scenario"],
+        as_index=False,
     ).agg(
         baseline_total_cost=("baseline_total_cost", "sum"),
         candidate_total_cost=("candidate_total_cost", "sum"),
