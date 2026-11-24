@@ -47,6 +47,7 @@ def main():
  # Full-population model artifacts: 30,490 series x 28 forecast days.
  for rel in ("reports/full_population_forecasting/forecast_28d_all_series.parquet",
              "reports/full_population_forecasting/full_population_forecast_metrics.csv",
+             "reports/full_population_forecasting/training_sample_comparison.csv",
              "reports/full_population_forecasting/forecast_run_metadata.json",
              "reports/full_population_forecasting/category_code_maps.json",
              "models/full_population/m5_global_lightgbm_28d.txt"):
