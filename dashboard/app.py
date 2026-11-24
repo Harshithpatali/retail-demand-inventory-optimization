@@ -311,6 +311,27 @@ def load_statistics(store_id: str, item_id: str) -> dict[str, Any]:
 
 
 @st.cache_data(ttl=300, max_entries=1, show_spinner=False)
+def load_population_forecast_status() -> dict[str, Any]:
+    response = httpx.get(f"{API_BASE_URL}/population/forecast/status", timeout=30.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=1, show_spinner=False)
+def load_population_forecast_metrics() -> list[dict[str, Any]]:
+    response = httpx.get(f"{API_BASE_URL}/population/forecast/metrics", timeout=30.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=1, show_spinner=False)
+def load_population_sample_comparison() -> list[dict[str, Any]]:
+    response = httpx.get(f"{API_BASE_URL}/population/forecast/sample-comparison", timeout=30.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=1, show_spinner=False)
 def load_population_overview() -> dict[str, Any]:
     response = httpx.get(f"{API_BASE_URL}/population/overview", timeout=30.0)
     response.raise_for_status()
@@ -458,6 +479,102 @@ def render_full_population() -> None:
         "They do not expand the model training set. Forecast accuracy, conformal diagnostics "
         "and inventory-policy experiments remain scoped to the separately selected 200-series panel."
     )
+
+
+def render_full_population_forecast() -> None:
+    st.markdown('<div class="eyebrow">FULL ASSORTMENT / GLOBAL FORECAST QUALITY</div>', unsafe_allow_html=True)
+    st.header("Full-population forecast performance")
+    st.caption(
+        "Validation-selected global LightGBM experiment across all 30,490 M5 item-store series. "
+        "The training-size comparison uses nested, deterministic series samples and a common validation window."
+    )
+    try:
+        status = load_population_forecast_status()
+        metrics = pd.DataFrame(load_population_forecast_metrics())
+        samples = pd.DataFrame(load_population_sample_comparison())
+    except Exception as exc:
+        st.error(f"Full-population forecast results are not available: {exc}")
+        st.info("The forecasting workflow must publish forecast_run_metadata.json, full_population_forecast_metrics.csv and training_sample_comparison.csv to Cloudflare R2.")
+        return
+    if not status.get("available"):
+        st.warning(status.get("reason", "Full-population forecast artifacts have not been published."))
+        return
+
+    st.markdown('<span class="status-pill">● FULL POPULATION · 28-DAY MODEL</span>', unsafe_allow_html=True)
+    a, b, c, d = st.columns(4)
+    a.metric("Item-store series", f"{int(status.get('series_count') or 0):,}")
+    b.metric("Forecast rows", f"{int(status.get('forecast_rows') or 0):,}")
+    c.metric("Forecast horizon", f"{int(status.get('horizon_days') or 0)} days")
+    selected_pct = status.get("selected_training_sample_pct")
+    d.metric("Selected training sample", f"{selected_pct}%" if selected_pct else "Pending")
+    st.caption(f"Forecast window: {status.get('forecast_start', '—')} to {status.get('forecast_end', '—')} · Peak training-process RSS: {status.get('peak_process_rss_gb', '—')} GiB")
+
+    if not samples.empty:
+        st.subheader("Training sample-size experiment")
+        display = samples.copy()
+        for col in ("validation_WAPE", "validation_bias"):
+            if col in display:
+                display[col] = pd.to_numeric(display[col], errors="coerce") * 100
+        st.caption("All sample sizes use the same validation observations. Selection score = WAPE + 0.15 × absolute bias. Lower is better; the test set is not used for selection.")
+        left, right = st.columns(2)
+        with left:
+            fig = px.line(display, x="training_sample_pct", y="validation_WAPE", markers=True,
+                          labels={"training_sample_pct": "Training series sampled (%)", "validation_WAPE": "Validation WAPE (%)"},
+                          color_discrete_sequence=["#52c7df"])
+            st.plotly_chart(plot_layout(fig, 300, legend=False), use_container_width=True, config=PLOT_CONFIG)
+        with right:
+            fig = px.bar(display, x="training_sample_pct", y="validation_bias",
+                         labels={"training_sample_pct": "Training series sampled (%)", "validation_bias": "Validation bias (%)"},
+                         color_discrete_sequence=["#f0b66b"])
+            fig.add_hline(y=0, line_dash="dash", line_color="#8fa1b5")
+            st.plotly_chart(plot_layout(fig, 300, legend=False), use_container_width=True, config=PLOT_CONFIG)
+        st.dataframe(display.round(4), use_container_width=True, hide_index=True)
+
+    if not metrics.empty:
+        overall = metrics[(metrics.get("segment_type") == "overall")].copy() if "segment_type" in metrics else pd.DataFrame()
+        if not overall.empty:
+            st.subheader("Untouched test-set comparison")
+            for col in ("WAPE", "bias"):
+                overall[col] = pd.to_numeric(overall[col], errors="coerce") * 100
+            overall["MAE"] = pd.to_numeric(overall["MAE"], errors="coerce")
+            overall["RMSE"] = pd.to_numeric(overall["RMSE"], errors="coerce")
+            cols = st.columns(4)
+            selected_row = overall[overall["model"].astype(str).str.contains("selected", case=False)]
+            if selected_row.empty:
+                selected_row = overall[overall["model"].astype(str).str.startswith("LightGBM")]
+            model_row = selected_row.iloc[0] if not selected_row.empty else overall.iloc[0]
+            cols[0].metric("Selected model WAPE", f"{model_row['WAPE']:.2f}%")
+            cols[1].metric("Selected model MAE", f"{model_row['MAE']:.3f}")
+            cols[2].metric("Selected model RMSE", f"{model_row['RMSE']:.3f}")
+            cols[3].metric("Selected model bias", f"{model_row['bias']:+.2f}%")
+            chart = overall[["model", "WAPE"]].dropna()
+            fig = px.bar(chart, x="model", y="WAPE", color="model",
+                         labels={"model": "Model / baseline", "WAPE": "Test WAPE (%)"},
+                         color_discrete_sequence=["#52c7df", "#f0b66b", "#b58ae8", "#6d9fe8"])
+            st.plotly_chart(plot_layout(fig, 320, legend=False), use_container_width=True, config=PLOT_CONFIG)
+            st.dataframe(overall[["model", "observations", "actual_units", "forecast_units", "MAE", "RMSE", "WAPE", "bias"]].round(4),
+                         use_container_width=True, hide_index=True)
+
+        st.subheader("Where does the model struggle?")
+        segment_type = st.selectbox("Error breakdown", ["store_id", "state_id", "cat_id", "dept_id"], key="full_forecast_segment")
+        segment_rows = metrics[(metrics.get("segment_type") == segment_type)].copy() if "segment_type" in metrics else pd.DataFrame()
+        if not segment_rows.empty:
+            for col in ("WAPE", "bias"):
+                segment_rows[col] = pd.to_numeric(segment_rows[col], errors="coerce") * 100
+            segment_rows = segment_rows.sort_values("WAPE", ascending=False).head(20)
+            st.dataframe(segment_rows[["segment", "observations", "MAE", "RMSE", "WAPE", "bias"]].round(3),
+                         use_container_width=True, hide_index=True)
+        else:
+            st.info("Segment-level test metrics are not present in the published artifact.")
+
+    with st.expander("Model assumptions and limitations"):
+        st.write(status.get("limitations", "Limitations not supplied in forecast metadata."))
+        st.markdown(
+            "- M5 reports sales, which may be lower than unconstrained demand when products are out of stock.\n"
+            "- Future event and SNAP covariates are set to zero when unavailable beyond the source calendar.\n"
+            "- WAPE is an aggregate metric; inspect store/category errors because low-volume series can be obscured.\n"
+            "- Inventory savings are not implied by forecast accuracy alone."
+        )
 
 
 @st.cache_data(ttl=120, max_entries=512, show_spinner=False)
@@ -1530,7 +1647,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section-label">WORKSPACES</div>', unsafe_allow_html=True)
     page = st.radio(
         "WORKSPACE",
-        ["Overview", "Full Population (R2)", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio", "SQL Analytics", "Statistical Lab", "Model Monitor"],
+        ["Overview", "Full Population (R2)", "Full Population Forecast", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio", "SQL Analytics", "Statistical Lab", "Model Monitor"],
         label_visibility="collapsed",
         key="workspace_navigation_v3",
     )
@@ -1554,6 +1671,15 @@ st.markdown(
 )
 if page == "Full Population (R2)":
     render_full_population()
+    st.markdown("---")
+    st.markdown(
+        f'<span class="small-mono">DATA SOURCE: PRIVATE CLOUDFLARE R2 &nbsp; · &nbsp; API: {API_BASE_URL}</span>',
+        unsafe_allow_html=True,
+    )
+    st.stop()
+
+if page == "Full Population Forecast":
+    render_full_population_forecast()
     st.markdown("---")
     st.markdown(
         f'<span class="small-mono">DATA SOURCE: PRIVATE CLOUDFLARE R2 &nbsp; · &nbsp; API: {API_BASE_URL}</span>',
