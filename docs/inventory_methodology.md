@@ -32,3 +32,12 @@ Orders are capped at 500 units in the live demo. The cap is a protective demo as
 ## Evaluation
 
 The offline forecast-driven inventory experiment selects policy parameters on validation data and evaluates the frozen policy on held-out demand. Its simulated economics are separate from the interactive single-SKU calculator. They are not realized retailer savings.
+
+
+## Full-population M5 forecast interpretation
+
+The full-population forecasting experiment is a separate model track from the selected 200-series experiments above. Its forecast target is observed M5 sales, not unconstrained customer demand. A zero-sales day can reflect no demand, a stockout, or other unobserved operational effects.
+
+The source calendar ends with the historical M5 data. For dates beyond that calendar, weekday and month are known, but future event, SNAP and selling-price covariates are not available in the source. The current batch forecast therefore uses neutral values for unavailable future covariates. Forecast accuracy may change materially when promotions, price changes, holidays or SNAP effects are important.
+
+A 28-day forecast is a point forecast. It is not itself an order recommendation: a replenishment decision also needs on-hand inventory, open purchase orders, reservations, supplier lead-time distributions, review cadence, pack sizes/MOQs and retailer-specific holding, ordering and shortage costs. Those operational inputs are not supplied by M5.
