@@ -114,7 +114,7 @@ def main() -> None:
                    (source_bucket,source_object,dataset_version,row_count,series_count,start_date,end_date,metadata)
                    values (%s,%s,%s,%s,%s,%s,%s,%s::jsonb) returning run_id""",
                 (source_bucket,source_object,dataset_version,row_count,series_count,start_date,end_date,
-                 '{"panel":"selected_high_demand_series","raw_archive_retained_in_storage":true}'),
+                 '{"panel":"selected_high_demand_series","raw_archive_retained_in_supabase_storage":true,"full_source_archive_r2":"m5-retail-analytics/raw/m5-forecasting-accuracy.zip","full_source_parquet_r2_prefix":"m5-retail-analytics/raw/extracted/","processed_parquet_r2_prefix":"m5-retail-analytics/processed/"}'),
             )
             run_id = cur.fetchone()[0]
 
