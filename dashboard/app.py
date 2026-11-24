@@ -251,6 +251,64 @@ def load_network() -> dict[str, Any]:
     return response.json()
 
 
+@st.cache_data(ttl=300, max_entries=1, show_spinner=False)
+def load_analytics_overview() -> dict[str, Any]:
+    response = httpx.get(f"{API_BASE_URL}/analytics/overview", timeout=12.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=8, show_spinner=False)
+def load_product_performance(sort_by: str = "total_units") -> list[dict[str, Any]]:
+    response = httpx.get(
+        f"{API_BASE_URL}/analytics/product-performance",
+        params={"limit": 100, "sort_by": sort_by}, timeout=15.0,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=32, show_spinner=False)
+def load_seasonality(store_id: str, item_id: str) -> dict[str, Any]:
+    response = httpx.get(
+        f"{API_BASE_URL}/analytics/seasonality",
+        params={"store_id": store_id, "item_id": item_id}, timeout=15.0,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=16, show_spinner=False)
+def load_model_evaluation() -> list[dict[str, Any]]:
+    response = httpx.get(f"{API_BASE_URL}/analytics/model-evaluation", timeout=15.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=8, show_spinner=False)
+def load_interval_evaluation() -> list[dict[str, Any]]:
+    response = httpx.get(f"{API_BASE_URL}/analytics/interval-evaluation", timeout=15.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=300, max_entries=8, show_spinner=False)
+def load_inventory_sensitivity() -> list[dict[str, Any]]:
+    response = httpx.get(f"{API_BASE_URL}/analytics/inventory-sensitivity", timeout=15.0)
+    response.raise_for_status()
+    return response.json()
+
+
+@st.cache_data(ttl=180, max_entries=128, show_spinner=False)
+def load_statistics(store_id: str, item_id: str) -> dict[str, Any]:
+    response = httpx.get(
+        f"{API_BASE_URL}/statistics/series",
+        params={"store_id": store_id, "item_id": item_id}, timeout=30.0,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 @st.cache_data(ttl=120, max_entries=512, show_spinner=False)
 def load_scenario(
     store_id: str, item_id: str, service_level: float,
@@ -1165,6 +1223,99 @@ def render_scenario(store: str, item: str, service_level: float, lead_time: int)
     st.dataframe(comparison.round(2), use_container_width=True, hide_index=True)
 
 
+def render_sql_analytics(store: str, item: str) -> None:
+    st.markdown('<div class="eyebrow">WAREHOUSE INTELLIGENCE / SQL MART</div>', unsafe_allow_html=True)
+    st.header("Retail SQL analytics")
+    try:
+        overview = load_analytics_overview()
+        if not overview.get("available"):
+            st.info(overview.get("message", "The analytical panel has not been published yet."))
+            return
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Daily fact rows", f"{int(overview.get('row_count', 0)):,}")
+        c2.metric("Selected series", f"{int(overview.get('series_count', 0)):,}")
+        c3.metric("Products / stores", f"{int(overview.get('product_count', 0)):,} / {int(overview.get('store_count', 0)):,}")
+        c4.metric("Total observed units", f"{int(overview.get('total_units', 0)):,}")
+        st.caption(f"Dataset window: {overview.get('start_date')} to {overview.get('end_date')} · Dataset version {str(overview.get('dataset_version', ''))[:12]}")
+        left, right = st.columns([1.35, 1])
+        with left:
+            st.subheader("Product-store performance")
+            sort_by = st.selectbox("Rank products by", ["total_units", "demand_cv", "zero_demand_rate", "avg_sell_price"])
+            products = pd.DataFrame(load_product_performance(sort_by))
+            if not products.empty:
+                st.dataframe(products, use_container_width=True, hide_index=True)
+        with right:
+            st.subheader("Selected series seasonality")
+            seasonality = load_seasonality(store, item)
+            weekday = pd.DataFrame(seasonality.get("weekday", []))
+            month = pd.DataFrame(seasonality.get("month", []))
+            if not weekday.empty:
+                fig = px.bar(weekday, x="weekday", y="mean_demand",
+                             color_discrete_sequence=["#52c7df"])
+                st.plotly_chart(plot_layout(fig, 260, legend=False), use_container_width=True, config=PLOT_CONFIG)
+            if not month.empty:
+                fig = px.line(month, x="month", y="mean_demand", markers=True,
+                              color_discrete_sequence=["#f0b66b"])
+                st.plotly_chart(plot_layout(fig, 240, legend=False), use_container_width=True, config=PLOT_CONFIG)
+    except Exception as exc:
+        st.warning(f"Supabase analytics are not available yet: {exc}")
+        st.caption("Configure SUPABASE_DB_URL on Render and publish the curated panel from GitHub Actions.")
+
+
+def render_statistical_lab(store: str, item: str) -> None:
+    st.markdown('<div class="eyebrow">STATISTICAL INFERENCE / TIME-SERIES DIAGNOSTICS</div>', unsafe_allow_html=True)
+    st.header("Statistical laboratory")
+    try:
+        result = load_statistics(store, item)
+    except Exception as exc:
+        st.error(f"Statistical analysis unavailable: {exc}")
+        return
+    ci = result.get("mean_95pct_block_bootstrap_ci", [None, None])
+    test = result.get("weekday_effect_test", {})
+    a, b, c, d = st.columns(4)
+    a.metric("Mean daily demand", money(result.get("mean_daily_demand")))
+    b.metric("Demand volatility (CV)", pct(result.get("coefficient_of_variation")))
+    c.metric("Zero-demand days", pct(result.get("zero_demand_rate")))
+    d.metric("Mean 95% block-bootstrap CI", f"{money(ci[0])} – {money(ci[1])}")
+    st.subheader("Weekday effect: within-week permutation test")
+    p_value = test.get("p_value")
+    t1, t2, t3 = st.columns(3)
+    t1.metric("Mean-demand range", money(test.get("statistic")))
+    t2.metric("Permutation p-value", f"{p_value:.4f}" if p_value is not None else "Not estimated")
+    t3.metric("Complete weeks", f"{int(test.get('weeks') or 0):,}")
+    st.caption("The confidence interval uses a 7-day moving-block bootstrap. The weekday test permutes weekday labels within complete weeks. These are exploratory time-series diagnostics, not causal evidence.")
+    with st.expander("Full diagnostics and assumptions"):
+        st.json(result)
+
+
+def render_model_monitor() -> None:
+    st.markdown('<div class="eyebrow">MODEL RISK / FORECAST QUALITY</div>', unsafe_allow_html=True)
+    st.header("Model performance & monitoring")
+    try:
+        metrics = pd.DataFrame(load_model_evaluation())
+        intervals = pd.DataFrame(load_interval_evaluation())
+        sensitivity = pd.DataFrame(load_inventory_sensitivity())
+        if metrics.empty:
+            st.info("No evaluation runs have been published to Supabase yet. Run the empirical-evaluation GitHub Actions workflow after adding SUPABASE_DB_URL.")
+        else:
+            st.subheader("Rolling-origin and demand-segment metrics")
+            st.dataframe(metrics, use_container_width=True, hide_index=True)
+        if not intervals.empty:
+            st.subheader("Prediction interval calibration")
+            intervals["nominal_coverage"] = pd.to_numeric(intervals["nominal_coverage"], errors="coerce")
+            intervals["empirical_coverage"] = pd.to_numeric(intervals["empirical_coverage"], errors="coerce")
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=intervals["nominal_coverage"], y=intervals["empirical_coverage"], name="Observed coverage"))
+            fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines", name="Ideal calibration", line=dict(dash="dash")))
+            st.plotly_chart(plot_layout(fig, 300), use_container_width=True, config=PLOT_CONFIG)
+            st.dataframe(intervals, use_container_width=True, hide_index=True)
+        if not sensitivity.empty:
+            st.subheader("Inventory cost and service-level sensitivity")
+            st.dataframe(sensitivity, use_container_width=True, hide_index=True)
+    except Exception as exc:
+        st.warning(f"Model-monitoring data are not available yet: {exc}")
+
+
 # ------------------------------ SIDEBAR ------------------------------
 with st.sidebar:
     st.markdown(
@@ -1200,7 +1351,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section-label">WORKSPACES</div>', unsafe_allow_html=True)
     page = st.radio(
         "WORKSPACE",
-        ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio"],
+        ["Overview", "Full EDA", "Demand Forecast", "Inventory Control", "Network Intelligence", "Business Impact", "Scenario Studio", "SQL Analytics", "Statistical Lab", "Model Monitor"],
         label_visibility="collapsed",
         key="workspace_navigation_v3",
     )
@@ -1248,6 +1399,12 @@ elif page == "Business Impact":
     render_business()
 elif page == "Scenario Studio":
     render_scenario(store, item, service_level, lead_time)
+elif page == "SQL Analytics":
+    render_sql_analytics(store, item)
+elif page == "Statistical Lab":
+    render_statistical_lab(store, item)
+elif page == "Model Monitor":
+    render_model_monitor()
 else:
     st.error(f"Unknown workspace selected: {page}")
 
