@@ -5,7 +5,10 @@ on:
   push:
     branches: [main]
     paths:
+      - scripts/download_m5_from_supabase.py
       - scripts/run_full_population_eda.py
+      - scripts/prepare_data.py
+      - scripts/build_features.py
       - .github/workflows/process-m5-source-data.yml
 
 permissions:
