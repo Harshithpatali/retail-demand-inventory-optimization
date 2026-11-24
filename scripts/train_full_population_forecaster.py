@@ -297,7 +297,9 @@ def main():
   "limitations":"M5 records sales, not latent unconstrained demand; zeros may include stockouts. Future price/event/SNAP values are unavailable beyond the source calendar."}
  (OUT/"forecast_run_metadata.json").write_text(json.dumps(metadata,indent=2))
  examples.unlink(missing_ok=True)
- print("Training sample comparison:\\n",comparison_df.to_string(index=False))\n print("Test metrics:\\n",metrics_df[metrics_df.segment_type.eq("overall")].to_string(index=False))
- print(json.dumps(metadata,indent=2))
+ print("Training sample comparison:")
+ print(comparison_df.to_string(index=False))
+ print("Test metrics:")
+ print(metrics_df[metrics_df.segment_type.eq("overall")].to_string(index=False))
 
 if __name__=="__main__":main()
