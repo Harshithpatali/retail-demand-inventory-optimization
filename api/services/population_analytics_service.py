@@ -71,3 +71,28 @@ class PopulationAnalyticsService:
         cols=[c for c in ("date","total_units","active_series","series_count","weekday_name","month_label",
                           "event_name_1","event_type_1","snap_CA","snap_TX","snap_WI") if c in frame.columns]
         return _records(frame[cols])
+
+    def forecast_status(self):
+        key="processed/full_population_forecasting/forecast_run_metadata.json"
+        try:
+            meta=_json(key)
+        except Exception:
+            return {"available":False,"reason":"Full-population forecast metadata is not published to R2 yet."}
+        return {"available":True,"scope":"full_population_forecast","series_count":meta.get("population_series"),
+            "forecast_rows":meta.get("forecast_rows"),"forecast_unique_series":meta.get("forecast_unique_series"),
+            "horizon_days":meta.get("horizon_days"),"forecast_start":meta.get("forecast_start"),
+            "forecast_end":meta.get("forecast_end"),"selected_training_sample_pct":meta.get("selected_training_sample_pct"),
+            "peak_process_rss_gb":meta.get("peak_process_rss_gb"),"inventory_assumptions":meta.get("inventory_assumptions"),
+            "limitations":meta.get("limitations")}
+    def forecast_metrics(self):
+        key="processed/full_population_forecasting/full_population_forecast_metrics.csv"
+        try:
+            return _records(_csv(key))
+        except Exception:
+            raise RuntimeError("Full-population forecast metrics are not published to R2 yet.")
+    def forecast_sample_comparison(self):
+        key="processed/full_population_forecasting/training_sample_comparison.csv"
+        try:
+            return _records(_csv(key))
+        except Exception:
+            raise RuntimeError("Training-sample comparison is not published to R2 yet.")
