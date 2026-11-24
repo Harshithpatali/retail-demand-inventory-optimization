@@ -12,6 +12,8 @@ An end-to-end retail decision-intelligence portfolio project built on the **M5 F
 
 ## 2-minute project walkthrough
 
+For a spoken demo script and common interview questions, see the [Recruiter Walkthrough](docs/RECRUITER_WALKTHROUGH.md).
+
 **The business problem.** Retailers must decide how much stock to hold before future demand is known. Under-forecasting can increase stockouts; over-forecasting ties up working capital. The problem is harder for products that sell intermittently, where long runs of zero-sales days are mixed with occasional demand spikes.
 
 **What I built.** I used the M5 Walmart dataset to create a reproducible data pipeline, profile the complete assortment, engineer lag/calendar/intermittency features, train and compare forecasting models, and translate predictions into periodic-review replenishment decisions. Data processing is automated with GitHub Actions; Parquet artifacts are stored in Cloudflare R2; curated SQL analytics are published to Supabase; FastAPI serves analytics and decision endpoints; Streamlit provides the user-facing workspaces.
