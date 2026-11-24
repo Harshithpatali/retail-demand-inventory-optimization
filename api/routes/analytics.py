@@ -35,6 +35,16 @@ def seasonality(store_id: str | None = None, item_id: str | None = None):
     return _run(lambda: _service.seasonality(store_id, item_id))
 
 
+@router.get("/interval-evaluation")
+def interval_evaluation(limit: int = Query(default=20, ge=1, le=100)):
+    return _run(lambda: _service.interval_evaluation(limit))
+
+
+@router.get("/inventory-sensitivity")
+def inventory_sensitivity(limit: int = Query(default=100, ge=1, le=500)):
+    return _run(lambda: _service.inventory_sensitivity(limit))
+
+
 @router.get("/model-evaluation")
 def model_evaluation(limit: int = Query(default=100, ge=1, le=500)):
     return _run(lambda: _service.model_evaluation(limit))
