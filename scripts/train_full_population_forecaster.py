@@ -73,7 +73,7 @@ def build_examples(path,date_cols,cal,origins,out):
       "month":np.full(n,int(cr["month"]),dtype=np.int8),
       "is_weekend":np.full(n,int(cr["wday"] in (1,2)),dtype=np.int8),
       "event_flag":np.full(n,ev,dtype=np.int8),"snap_flag":snap,
-      "target":v[:,ti],"seasonal_naive":v[:,ti-7],
+      "target":v[:,ti],"seasonal_naive":v[:,ti-7],\n      "origin_index":np.full(n,origin,dtype=np.int16),
       "store_segment":store,"state_segment":state,"category_segment":cat,"department_segment":dept}
      frame=pd.DataFrame(data)
      table=pa.Table.from_pandas(frame,preserve_index=False)
@@ -146,7 +146,7 @@ def predict_future(path,date_cols,cal,model,levels):
     "cv2_90":np.divide(hist.std(axis=1),mean,out=np.zeros(n,dtype=np.float32),where=mean>0)**2})
    for h,dt in enumerate(dates,1):
     X=base.copy()
-    X["horizon"]=h; X["day_of_week"]=dt.dayofweek+1
+    X["horizon"]=h; X["day_of_week"]=((dt.dayofweek+5)%7)+1
     X["month"]=dt.month; X["is_weekend"]=int(dt.dayofweek>=5)
     X["event_flag"]=0; X["snap_flag"]=0
     for c in CATS:X[c]=X[c].astype("category")
