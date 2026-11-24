@@ -149,7 +149,10 @@ def predict_future(path,date_cols,cal,model,levels):
     X["horizon"]=h; X["day_of_week"]=((dt.dayofweek+5)%7)+1
     X["month"]=dt.month; X["is_weekend"]=int(dt.dayofweek>=5)
     X["event_flag"]=0; X["snap_flag"]=0
-    for c in CATS:X[c]=X[c].astype("category")
+    category_sizes={"item_code":len(levels["item_id"]),"store_code":len(levels["store_id"]),
+     "dept_code":len(levels["dept_id"]),"cat_code":len(levels["cat_id"]),
+     "state_code":len(levels["state_id"])}
+    for c in CATS:X[c]=pd.Categorical(X[c],categories=range(category_sizes[c]))
     yhat=np.clip(model.predict(X[FEATURES]),0,None)
     frame=pd.DataFrame({"id":chunk.id.astype(str),"item_id":chunk.item_id.astype(str),
      "dept_id":chunk.dept_id.astype(str),"cat_id":chunk.cat_id.astype(str),
