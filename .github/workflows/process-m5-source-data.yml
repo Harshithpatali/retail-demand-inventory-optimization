@@ -9,6 +9,7 @@ on:
       - scripts/run_full_population_eda.py
       - scripts/prepare_data.py
       - scripts/build_features.py
+      - scripts/load_retail_warehouse.py
       - .github/workflows/process-m5-source-data.yml
 
 permissions:
@@ -86,6 +87,18 @@ jobs:
           print("Validation report keys:", sorted(report))
           print("Feature date range:", features.date.min(), "to", features.date.max())
           PY
+
+      - name: Publish compact analytical panel to Supabase PostgreSQL
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_BUCKET: m5-raw-data
+          M5_ZIP_PATH: ${{ secrets.M5_ZIP_PATH }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::SUPABASE_DB_URL is not configured; curated panel remains in Parquet artifacts."
+            exit 0
+          fi
+          python -m scripts.load_retail_warehouse
 
       - name: Remove temporary raw CSVs and downloaded ZIP
         if: always()
