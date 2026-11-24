@@ -158,3 +158,19 @@ alter table retail.forecast_interval_evaluation enable row level security;
 alter table retail.inventory_sensitivity enable row level security;
 revoke all on retail.forecast_interval_evaluation, retail.inventory_sensitivity from public,anon,authenticated;
 grant select,insert,update,delete on retail.forecast_interval_evaluation, retail.inventory_sensitivity to service_role;
+
+-- Supporting indexes and explicit service-role-only RLS policies.
+create index if not exists ix_fact_daily_demand_calendar_date on retail.fact_daily_demand(calendar_date);
+create index if not exists ix_inventory_scenarios_run_id on retail.inventory_scenarios(run_id);
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'dataset_runs','dim_product','dim_store','dim_date','fact_daily_demand',
+    'model_evaluation','forecast_runs','forecast_predictions','inventory_scenarios',
+    'forecast_interval_evaluation','inventory_sensitivity'
+  ] loop
+    execute format('drop policy if exists service_role_all on retail.%I',t);
+    execute format('create policy service_role_all on retail.%I for all to service_role using (true) with check (true)',t);
+  end loop;
+end $$;
