@@ -52,6 +52,15 @@ jobs:
         run: python -m scripts.run_forecast_driven_inventory
       - name: Lead-time, service-level and cost sensitivity
         run: python -m scripts.run_inventory_sensitivity
+      - name: Publish evaluation metrics to private Supabase warehouse
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::SUPABASE_DB_URL is not configured; evaluation tables remain as workflow artifacts."
+            exit 0
+          fi
+          python -m scripts.publish_model_evaluation
       - name: Upload empirical evaluation tables
         if: always()
         uses: actions/upload-artifact@v4
