@@ -100,7 +100,12 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: m5-retail-analytics
           R2_REGION: auto
-        run: python -m scripts.upload_m5_to_r2
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+            echo "::warning::R2 credentials are not configured; skipping R2 upload. Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY, then rerun this workflow."
+            exit 0
+          fi
+          python -m scripts.upload_m5_to_r2
 
       - name: Publish compact analytical panel to Supabase PostgreSQL
         env:
