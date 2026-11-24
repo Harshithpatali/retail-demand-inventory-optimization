@@ -12,6 +12,8 @@ from api.routes.options import router as options_router
 from api.routes.series import router as series_router
 from api.routes.eda import router as eda_router
 from api.routes.network import router as network_router
+from api.routes.analytics import router as analytics_router
+from api.routes.statistics import router as statistics_router
 
 app = FastAPI(
     title="Retail Demand Forecasting & Inventory Optimization API",
@@ -36,6 +38,8 @@ for router in [
     series_router,
     eda_router,
     network_router,
+    analytics_router,
+    statistics_router,
 ]:
     app.include_router(router)
 
