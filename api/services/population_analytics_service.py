@@ -28,7 +28,9 @@ def _csv(key):
     obj=_client().get_object(Bucket=_bucket(),Key=key)
     return pd.read_csv(BytesIO(obj["Body"].read()))
 def _records(frame):
-    return frame.astype(object).where(pd.notna(frame),None).to_dict(orient="records")
+    clean = frame.astype(object).where(pd.notna(frame), None)
+    clean = clean.replace([float("inf"), float("-inf")], None)
+    return clean.to_dict(orient="records")
 class PopulationAnalyticsService:
     prefix="processed/full_population_eda/"
     def status(self):
