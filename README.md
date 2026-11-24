@@ -1,260 +1,213 @@
-# Retail Demand Forecasting & Inventory Optimization
+# Retail Demand & Inventory Optimization
 
-An end-to-end applied Data Science project that turns retail point-of-sale history into demand forecasts, uncertainty estimates, replenishment policies, and measurable inventory trade-offs.
-
-
-
-**Decision-maker brief:** [Inventory replenishment decision brief](docs/DECISION_BRIEF.md) — summarizes the simulated cost/service improvement, assumptions, and what a real pilot would need.
+An end-to-end retail decision-intelligence portfolio project built on the **M5 Forecasting — Accuracy** dataset. It combines large-scale demand analytics, time-series feature engineering, global machine-learning forecasts, uncertainty diagnostics, replenishment policies, and an interactive dashboard.
 
 <p align="left">
-  <a href="https://retail-demand-inventory-optimization-v1.streamlit.app/"><strong>Live Streamlit Dashboard</strong></a> ·
-  <a href="https://retail-demand-inventory-optimization.onrender.com/"><strong>FastAPI Backend</strong></a> ·
-  <a href="https://retail-demand-inventory-optimization.onrender.com/docs"><strong>Interactive API Docs</strong></a> ·
-  <a href="https://github.com/Harshithpatali/retail-demand-inventory-optimization/actions"><strong>CI & Experiments</strong></a>
+  <a href="https://retail-demand-inventory-optimization-v1.streamlit.app/"><strong>Open Streamlit Dashboard</strong></a> ·
+  <a href="https://retail-demand-inventory-optimization.onrender.com/docs"><strong>FastAPI Docs</strong></a> ·
+  <a href="https://github.com/Harshithpatali/retail-demand-inventory-optimization/actions"><strong>GitHub Actions</strong></a>
 </p>
 
----
+> **Scope note:** this repository contains two distinct modelling tracks. Full-population EDA and a 28-day global LightGBM forecast cover all 30,490 item-store series. The more extensive rolling-origin model comparison, conformal interval evaluation and inventory-policy simulation use a separate, selected 200-series panel. Results from these tracks are not interchangeable.
 
-## 1. Problem framing
+## 2-minute project walkthrough
 
-Retail demand is difficult to plan because sales vary across products, stores, calendar periods, promotions, and seasonal events. Forecast error has operational consequences:
+**The business problem.** Retailers must decide how much stock to hold before future demand is known. Under-forecasting can increase stockouts; over-forecasting ties up working capital. The problem is harder for products that sell intermittently, where long runs of zero-sales days are mixed with occasional demand spikes.
 
-- Under-forecasting can increase stockout exposure and lost sales.
-- Over-forecasting can tie up working capital and increase holding costs.
-- Intermittent products have many zero-sales days, making standard error metrics and forecasting assumptions less reliable.
-- A point forecast alone does not describe the range of plausible demand during a replenishment protection period.
+**What I built.** I used the M5 Walmart dataset to create a reproducible data pipeline, profile the complete assortment, engineer lag/calendar/intermittency features, train and compare forecasting models, and translate predictions into periodic-review replenishment decisions. Data processing is automated with GitHub Actions; Parquet artifacts are stored in Cloudflare R2; curated SQL analytics are published to Supabase; FastAPI serves analytics and decision endpoints; Streamlit provides the user-facing workspaces.
 
-This project addresses the decision chain rather than treating forecasting as an isolated regression task:
+**What the evidence says.** On the full 30,490-series population, the selected 75%-sample LightGBM model achieved **72.50% test WAPE**, versus **86.27%** for the seasonal-naive baseline. That is a **15.95% relative reduction in WAPE**, but the remaining error is high and the model still under-forecasts aggregate demand by about **4.81%**. Separately, on the selected 200-series rolling-origin benchmark, XGBoost achieved **29.11% WAPE**. In a 200-series held-out inventory simulation, the forecast-driven policy reduced simulated cost by **17.62%** under configured assumptions. These are historical benchmark and simulated results—not live retailer savings.
 
-1. Understand the full historical demand population.
-2. Engineer leakage-aware, time-dependent features.
-3. Compare machine-learning forecasts with simple and intermittent-demand baselines.
-4. Evaluate forecasts on chronological holdouts and rolling origins.
-5. Diagnose uncertainty and empirical interval coverage.
-6. Translate forecasts into periodic-review inventory targets.
+**How to explore it.** Open the dashboard, start with Full Population Forecast to inspect the 30,490-series experiment, then inspect Demand Forecast and Inventory Control for the separate 200-series modelling workflow. The screenshots below provide a quick visual preview.
+
+## At a glance
+
+| Dimension | Evidence |
+|---|---|
+| Full M5 population | 30,490 item-store series × 1,941 daily observations |
+| Historical period | 2011-01-30 to 2016-05-23 |
+| Full-population future output | 28 days × 30,490 series = 853,720 forecast rows |
+| Full-population training design | Nested 25%, 50%, 75%, 100% series samples; 75% selected on validation heuristic |
+| Separate modelling panel | 200 selected item-store series; 388,200 daily panel rows |
+| Forecasting methods | LightGBM, XGBoost, naive, seasonal naive, moving average, Croston SBA |
+| Decision layer | Periodic-review replenishment and cost/service simulation |
+| Application | FastAPI + Streamlit |
+| Data and automation | Cloudflare R2, Supabase, GitHub Actions |
+
+## Screenshots
+
+The images are committed in `docs/screenshots/`.
+
+<p align="center">
+  <img src="docs/screenshots/UI.png" alt="Retail intelligence dashboard screenshot 1" width="800">
+  <br><em>Application overview</em>
+</p>
+<p align="center">
+  <img src="docs/screenshots/UI_2.png" alt="Retail intelligence dashboard screenshot 2" width="800">
+  <br><em>Analytics workspace</em>
+</p>
+<p align="center">
+  <img src="docs/screenshots/UI_3.png" alt="Retail intelligence dashboard screenshot 3" width="800">
+  <br><em>Forecasting and decision workspace</em>
+</p>
+<p align="center">
+  <img src="docs/screenshots/UI_4.png" alt="Retail intelligence dashboard screenshot 4" width="800">
+  <br><em>Inventory and scenario workspace</em>
+</p>
+
+## Problem framing
+
+Demand varies by product, store, weekday, season, event and price. A useful system must do more than output a point forecast: it should expose forecast error, distinguish smooth from intermittent demand, and show how different replenishment choices affect availability and inventory cost.
+
+The project investigates this decision chain:
+
+1. Profile the full historical population.
+2. Build time-aware features without using future demand as an input.
+3. Compare machine-learning forecasts with transparent baselines.
+4. Evaluate on chronological validation and test windows.
+5. Diagnose residual uncertainty and empirical interval coverage.
+6. Translate forecasts into protection-period inventory targets.
 7. Simulate service, stockout, inventory and cost trade-offs under explicit assumptions.
 
-**Primary analytical question:** can a forecast-informed replenishment policy improve the balance between availability and inventory cost compared with a historical-demand policy on held-out demand?
+## Dataset and scale
 
----
+The project uses the public **M5 Forecasting — Accuracy** competition data from Walmart. The data includes daily item-store unit sales, a calendar table, selling prices by item/store/week, and product/store hierarchy identifiers.
 
-## 2. Dataset and analytical scope
-
-### M5 Forecasting — Accuracy
-
-The M5 dataset contains hierarchical retail unit sales from Walmart stores in the United States. It provides item/store sales history, calendar attributes, and weekly selling prices.
-
-| Data component | Role in the analysis |
+| Dataset component | Role |
 |---|---|
-| Sales history | Daily unit demand by item and store |
-| Calendar | Date, weekday, month, year, week and event/snap-related attributes |
-| Sell prices | Item-store-week selling price |
-| Product hierarchy | Item, department and category identifiers |
-| Store hierarchy | Store and state identifiers |
+| Sales matrix | Daily observed unit sales by item and store |
+| Calendar | Date, weekday, month, year, event and SNAP attributes |
+| Sell prices | Weekly item-store selling price |
+| Hierarchy | Item, department, category, store and state identifiers |
 
-The full-population EDA reads the original evaluation sales matrix in chunks and covers **30,490 item-store series across 1,941 daily columns**. It does not construct a 30,490-series long-form Parquet panel.
+The full sales matrix contains **30,490 item-store series and 1,941 daily columns** (about 59 million series-day cells). The full-population EDA reads this matrix in chunks; it does not materialize the entire population as a long-form panel in the SQL warehouse.
 
-### Two intentionally separate data scopes
+### Keep the two populations separate
 
-| Scope | Population | Purpose |
+| Track | Scope | What it supports |
 |---|---:|---|
-| Full-population EDA | 30,490 item-store series | Dataset-wide descriptive analysis and segmentation |
-| Forecasting and inventory experiments | 200 selected item-store series | Reproducible model development, temporal validation and simulation |
+| Full-population analytics and forecast | 30,490 series | EDA, sample-size experiment, global 28-day forecast and segment diagnostics |
+| Detailed model and inventory experiments | 200 selected series | Rolling-origin comparison, Croston benchmark, conformal diagnostics and inventory simulation |
 
-The modelling subset is deterministic: up to 20 high-volume items per store, with a maximum of 200 series, selected using the configured recent-demand ranking. This makes the model experiments practical to reproduce while keeping the EDA population-wide.
+The 200-series panel is selected deterministically using recent demand ranking (up to 20 high-volume items per store). It is a practical modelling subset, not a statistically representative sample of every M5 series.
 
-The source archive is stored in a **private Supabase Storage bucket**. Raw CSVs and the ZIP are not committed to GitHub.
+The original archive is stored privately in Supabase Storage. Raw source files and credentials are not committed to this repository.
 
----
+## Architecture
 
-## 3. Full-population exploratory data analysis
+```mermaid
+flowchart TD
+    A["Private Supabase Storage\nM5 source archive"] --> B["GitHub Actions\nDownload + integrity checks"]
+    B --> C["Chunked Python processing\nFull-population EDA"]
+    B --> D["200-series panel\nCleaning + feature engineering"]
+    C --> E["Full-population artifacts"]
+    D --> F["XGBoost / LightGBM\nRolling-origin experiments"]
+    E --> G["Global LightGBM\n28-day full-population forecast"]
+    F --> H["Uncertainty + inventory simulation"]
+    G --> I["Cloudflare R2\nParquet + manifest"]
+    H --> J["Supabase\nCurated SQL analytics"]
+    I --> K["FastAPI"]
+    J --> K
+    K --> L["Streamlit dashboard"]
+```
 
-The full-data EDA runs on the original sales matrix before the modelling subset is selected. It uses chunked CSV reads and accumulates daily and per-series statistics, avoiding a full long-panel expansion.
+| Layer | Technology | Responsibility |
+|---|---|---|
+| Ingestion and processing | Python, pandas, PyArrow, Parquet | Chunked source processing, validation, cleaning and feature generation |
+| Forecasting | LightGBM, XGBoost, scikit-learn | Global and selected-panel demand models and baselines |
+| Statistical evaluation | NumPy, pandas, bootstrap and residual diagnostics | Chronological evaluation, uncertainty and sensitivity |
+| Object storage | Cloudflare R2 | Full-population source/processed artifacts and forecast outputs |
+| SQL analytics | Supabase PostgreSQL | Curated 200-series daily panel and analytical tables |
+| API | FastAPI | Health, population analytics, forecasts and inventory endpoints |
+| Frontend | Streamlit | EDA, forecasting, inventory and scenario workspaces |
+| Automation | GitHub Actions | Reproducible processing, experiment and test workflows |
 
-### Analysis dimensions
+Further detail: [Architecture](docs/architecture.md).
 
-| EDA area | Questions and measures |
-|---|---|
-| Population profile | Number of series, history length, active/inactive series and total units |
-| Demand distribution | Series cumulative demand, average daily demand, standard deviation, maximum daily demand and quantiles |
-| Sparsity and intermittency | Zero-demand-day fraction, non-zero selling days and average demand interval |
-| Intermittent-demand structure | Average demand interval (ADI) and squared coefficient of variation (CV²) diagnostics |
-| Temporal behaviour | Daily aggregate trend, monthly demand, weekday profile and active-series trend |
-| Product segmentation | Demand and activity by category and department |
-| Store geography | State/store demand aggregates using dataset identifiers |
-| Price structure | Sell-price distribution, price changes and store-level price summaries |
+## Pipeline workflow
 
-### Intermittency diagnostics
+The main `process-m5-source-data` GitHub Actions workflow performs the following steps:
 
-For each item-store series, the EDA calculates:
+1. Retrieve the private M5 ZIP from Supabase Storage using Actions secrets.
+2. Validate archive integrity and extract the required sales, calendar and price files.
+3. Run chunked full-population EDA on the complete 30,490-series matrix.
+4. Build the separate selected 200-series cleaned and feature panels.
+5. Generate global full-population training examples at multiple historical origins.
+6. Train and validate LightGBM models on nested series samples (25%, 50%, 75%, 100%).
+7. Select the sample size using validation WAPE plus a documented aggregate-bias penalty; evaluate the selected model on the untouched test origin.
+8. Generate and verify the 28-day forecast for every series.
+9. Upload raw/processed Parquet and compact artifacts to Cloudflare R2.
+10. Publish the curated 200-series daily panel and SQL analytics to Supabase.
+11. Remove temporary raw files and commit compact reports/metadata.
 
-- **Zero-day fraction:** proportion of observed days with zero recorded sales.
-- **Average demand interval (ADI):** number of observed days divided by the number of non-zero demand days.
-- **Demand CV²:** squared coefficient of variation of daily demand.
+The latest documented successful full-population run produced **853,720 forecast rows**, representing 30,490 series × 28 dates. Feature generation produced 5,122,320 training examples; peak process memory was approximately 2.32 GiB. The run published 36 R2 objects and 388,200 daily rows across 200 series to Supabase.
 
-ADI and CV² provide a descriptive view of demand sparsity and variability. They are useful for identifying series that may behave differently from smooth, frequently selling products. They are not used as causal explanations.
+## Forecasting methodology and evaluation
 
-### EDA outputs
+### Why intermittent demand is difficult
 
-After the full-data workflow succeeds, generated files are committed under [`reports/eda/full_data/`](reports/eda/full_data/):
+A large fraction of item-store observations are zero. In the full-population EDA, the median zero-day fraction was approximately **73.31%** and the mean was **68.00%**. This creates several modelling challenges:
 
-- `FULL_DATA_EDA.md` — scope, headline statistics and interpretation.
-- `full_eda_summary.json` — machine-readable headline summary.
-- `series_metrics.csv` — one row per item-store series.
-- `daily_demand_full_population.csv` — daily aggregate demand and calendar attributes.
-- `monthly_demand.csv` and `weekday_demand.csv` — temporal summaries.
-- `by_state_id.csv`, `by_store_id.csv`, `by_cat_id.csv`, `by_dept_id.csv` — segment aggregates.
-- `price_summary_by_store.csv` and `price_distribution.csv` — price diagnostics.
-- `figures/` — daily trend, monthly and weekday patterns, demand distribution, intermittency, ADI/CV², segment comparisons and price distribution.
+- **Sparse signal:** many consecutive zero observations provide limited information about when the next sale will occur.
+- **Two-part behaviour:** demand occurrence and demand size are different processes. A model can estimate average volume reasonably while missing the timing or magnitude of individual demand events.
+- **Skew and bursts:** occasional large sales can dominate absolute error and distort estimates based on recent averages.
+- **Heterogeneity:** products and stores differ substantially; one global model must learn across many demand patterns.
+- **Observed sales are not latent demand:** a zero-sales day can reflect no customer demand, a stockout, or another unobserved operational constraint.
+- **Missing future drivers:** future event, SNAP and selling-price covariates are unavailable beyond the source calendar, so the full-population forecast uses neutral values for unavailable future event/SNAP inputs and does not project future prices.
 
-The full-population EDA is descriptive. It should not be confused with the 200-series model evaluation results below.
+The pipeline includes zero-demand fractions, average demand interval (ADI), demand coefficient-of-variation diagnostics (CV²), lag features and rolling summaries. These help describe demand patterns; they do not remove the underlying uncertainty.
 
----
+### Full-population 28-day global LightGBM experiment
 
-## 4. Data engineering and feature construction
+The full-population track creates examples at four historical training origins, one validation origin and one untouched test origin. Training samples are nested, deterministic hash samples of item-store series. Every sample is evaluated on the same complete validation population.
 
-### Source ingestion
+The model is a LightGBM regressor with a Poisson objective. Features include item/store/category/department/state codes, forecast horizon, weekday/month/event/SNAP indicators, demand lags, rolling means and standard deviation, recent zero fractions, ADI and CV².
 
-The `process-m5-source-data` GitHub Actions workflow:
+**Validation sample-size comparison**
 
-1. Authenticates to private Supabase Storage using repository Actions secrets.
-2. Downloads the original compressed archive to the ephemeral runner.
-3. Verifies ZIP integrity.
-4. Extracts only the preferred sales matrix (`sales_train_evaluation.csv`, or the validation matrix as fallback), `calendar.csv`, and `sell_prices.csv`.
-5. Runs full-population EDA on the complete sales matrix.
-6. Builds the separate 200-series cleaned and feature panels.
-7. Validates generated outputs.
-8. Deletes the temporary ZIP and raw CSVs.
-9. Commits only compact EDA outputs, validation metadata and processed Parquet datasets.
+| Training sample | Series | Validation WAPE | Validation MAE | Validation RMSE | Bias |
+|---:|---:|---:|---:|---:|---:|
+| 25% | 7,622 | 74.457% | 1.0323 | 2.2298 | -3.70% |
+| 50% | 15,245 | 74.000% | 1.0260 | 2.1662 | -1.61% |
+| 75% | 22,867 | **73.887%** | 1.0244 | 2.1489 | -0.56% |
+| 100% | 30,490 | 73.878% | **1.0243** | 2.1624 | -0.74% |
 
-The workflow does not extract the unused second sales matrix or `sample_submission.csv`. Credentials are never stored in the repository.
+Selection used `validation WAPE + 0.15 × absolute aggregate bias`. This is a declared experiment heuristic, not a statistically calibrated business utility. The 75% sample was selected because it achieved the lowest heuristic score; the 100% sample had marginally lower WAPE alone.
 
-### Cleaning and joins
+**Untouched test-origin comparison**
 
-The modelling data pipeline:
+| Model | MAE | RMSE | WAPE | Bias |
+|---|---:|---:|---:|---:|
+| **LightGBM, selected 75% training sample** | **1.0461** | **2.1840** | **72.503%** | **-4.81%** |
+| 7-day moving average | 1.0683 | 2.2487 | 74.042% | -7.36% |
+| Seasonal naive | 1.2447 | 2.6815 | 86.270% | -1.49% |
+| Naive last value | 1.3730 | 2.8936 | 95.162% | +13.19% |
 
-- Selects the configured item-store series deterministically.
-- Converts the wide sales matrix to a long panel for the selected series.
-- Joins daily calendar attributes using the day key.
-- Joins item-store weekly selling prices using store, item and week keys.
-- Applies a within-series forward/backward fill for missing selling-price observations.
-- Enforces typed demand, price, date and categorical columns.
-- Sorts observations by series and date before feature generation.
+WAPE is `sum(|actual - forecast|) / sum(|actual|)`. The selected model reduced WAPE by approximately **15.95% relative to seasonal naive** and **2.08% relative to the 7-day moving average**. Its absolute WAPE remains high. A bias of -4.81% means aggregate forecasts were below actual demand by about 4.8% on this test origin.
 
-Missing prices filled from nearby observations are a preprocessing convention, not independently verified transaction prices.
+### Where the full-population model can perform poorly
 
-### Feature engineering
+The overall WAPE is demand-weighted and can hide poor performance for low-volume products. Series with very high zero-day fractions, long gaps between sales, sudden bursts, promotion effects or changing prices are especially difficult. The model also relies on neutral future event/SNAP inputs and does not forecast future prices. Those limitations can cause errors when calendar or price effects matter.
 
-The feature panel combines:
+Segment metrics are generated by store, state, category and department. The headline aggregate result should not be interpreted as evidence that every segment or SKU performs equally well. The available headline summary does not establish a specific worst-performing segment; consult the generated segment-level report before making such a claim.
 
-- Lagged demand features.
-- Rolling-window demand summaries.
-- Calendar and weekday information.
-- Product/store categorical identifiers.
-- Selling-price information and derived price context.
+### Separate 200-series model comparison
 
-All temporal evaluation is chronological. Model features for a forecast date must be based on information available before that date; the rolling one-step evaluation protocol makes this information set explicit.
-
-### Processed data artifacts
-
-| Path | Description |
-|---|---|
-| `data/interim/cleaned_sales.parquet` | Cleaned long-form panel for the selected modelling series |
-| `data/interim/validation_report.json` | Compact validation and data-quality summary |
-| `data/processed/forecast_features.parquet` | Model-ready feature panel |
-| `reports/eda/full_data/` | Full-population EDA tables, report and figures |
-
----
-
-## 5. Forecasting methodology
-
-The forecasting workflow evaluates gradient-boosted tree models against simple demand baselines.
-
-### Models and benchmarks
-
-- **XGBoost:** gradient-boosted decision trees for nonlinear relationships across lagged demand, calendar, price and series attributes.
-- **LightGBM:** a second gradient-boosting implementation used as a model comparator.
-- **Naive:** most recently observed demand.
-- **Seasonal naive:** demand from the corresponding weekly seasonal position.
-- **Moving average:** trailing seven-day average.
-- **Croston SBA:** intermittent-demand benchmark that separately estimates non-zero demand size and inter-demand interval.
-
-Baselines are important: a complex model is useful only if it improves on simple, transparent alternatives under the same information constraints.
-
-### Evaluation design
-
-The project distinguishes three evaluation exercises:
-
-1. **Original chronological validation benchmark:** the initial model comparison on the selected 200-series panel.
-2. **Historical fixed-model temporal robustness:** one saved XGBoost model evaluated across four consecutive 28-day windows without retraining between windows.
-3. **Expanding-window rolling-origin refit:** XGBoost and LightGBM are independently retrained at each of four origins, with the next 28 days evaluated at each origin.
-
-For the rolling-origin comparison, all models and simple baselines are evaluated as **rolling one-step-ahead forecasts**. Each date is forecast from information available before that date; observed demand is then revealed before forecasting the next date. This avoids comparing machine-learning predictions with a baseline that has a different information set.
-
-### Metrics
-
-- **MAE:** mean absolute error, in units.
-- **RMSE:** root mean squared error, which penalizes larger errors more strongly.
-- **WAPE:** sum of absolute errors divided by total actual demand, reported as a percentage.
-
-WAPE is useful for aggregate retail demand, but can conceal poor performance on low-volume series. Results should be read alongside series-level and segment-level diagnostics.
-
----
-
-## 6. Empirical forecasting results
-
-### Expanding-window rolling-origin refit
-
-Four successive 28-day origins; pooled out-of-fold results across 22,400 observations (200 series × 112 test days).
+This is a different experiment and must not be compared directly with the full-population LightGBM result above. Four expanding-window origins were used; XGBoost and LightGBM were refit at each origin. The baselines were scored as rolling one-step-ahead forecasts, with each day's actual demand revealed before the next day's prediction.
 
 | Model | MAE | RMSE | WAPE |
 |---|---:|---:|---:|
-| **XGBoost (refit per origin)** | **7.074** | **10.960** | **29.11%** |
-| LightGBM (refit per origin) | 7.132 | 11.007 | 29.35% |
-| Moving average (7-day) | 8.383 | 13.030 | 34.49% |
+| **XGBoost** | **7.074** | **10.960** | **29.11%** |
+| LightGBM | 7.132 | 11.007 | 29.35% |
+| 7-day moving average | 8.383 | 13.030 | 34.49% |
 | Naive | 9.386 | 14.845 | 38.62% |
-| Seasonal naive (7-day) | 9.793 | 15.646 | 40.29% |
+| Seasonal naive | 9.793 | 15.646 | 40.29% |
 
-XGBoost achieved the lowest pooled WAPE in this experiment. Its advantage over LightGBM was modest (0.24 percentage points in pooled WAPE), while the gap against the simple baselines was larger.
+The 200-series final 28-day holdout comparison also reported XGBoost WAPE of 28.68% versus 34.34% for Croston SBA. That pooled comparison does not mean XGBoost wins for every intermittent series.
 
-### Paired series-cluster bootstrap
+### Uncertainty diagnostics (200-series track)
 
-Paired item-store series bootstrap comparisons evaluate the mean per-series WAPE difference between XGBoost and each reference method.
-
-| Reference | Mean difference (pp) | 95% percentile interval | Bootstrap two-sided sign probability |
-|---|---:|---:|---:|
-| LightGBM | -0.347 | [-0.479, -0.200] | 0.001 |
-| Moving average | -4.875 | [-5.343, -4.412] | 0.001 |
-| Naive | -9.851 | [-10.503, -9.174] | 0.001 |
-| Seasonal naive | -12.453 | [-13.487, -11.528] | 0.001 |
-
-Negative differences favour XGBoost. The bootstrap resamples paired item-store series to preserve within-series dependence. The reported probability is a bootstrap sign probability around zero, **not** a paired t-test or randomization test. Inference is limited to this selected 200-series panel.
-
-### Other historical model diagnostics
-
-| Experiment | Result |
-|---|---|
-| Original validation benchmark | XGBoost WAPE 28.08%; naive baseline WAPE 68.73% |
-| Historical fixed-model four-window evaluation | Mean WAPE 28.57%; fold range 28.08%–29.43% |
-| Croston SBA final 28-day holdout | XGBoost WAPE 28.68%; Croston SBA WAPE 34.34% |
-
-These results come from distinct evaluation scripts and should not be merged into one leaderboard. See the [detailed empirical results](docs/empirical_evaluation_results.md) and [evaluation protocol](docs/empirical_evaluation_protocol.md).
-
----
-
-## 7. Forecast uncertainty and conformal diagnostics
-
-A point forecast does not quantify uncertainty over the inventory protection period. The project adds empirical residual-based interval diagnostics.
-
-The uncertainty workflow:
-
-- Uses chronological residuals from prior validation data.
-- Estimates finite-sample absolute-residual quantiles.
-- Uses per-series calibration when sufficient residual history is available, with pooled fallback otherwise.
-- Evaluates empirical coverage and mean interval width on a held-out period.
-- Includes block residual calibration for multi-day protection-period demand.
-
-### Held-out interval diagnostics
+Residual-based conformal diagnostics on a held-out sample reported:
 
 | Nominal coverage | Empirical coverage | Mean interval width |
 |---:|---:|---:|
@@ -262,28 +215,47 @@ The uncertainty workflow:
 | 90% | 92.59% | 32.52 units |
 | 95% | 95.91% | 39.52 units |
 
-These are empirical results on one held-out sample. Time-series dependence and non-stationarity mean that classical exchangeability-based conformal guarantees should not be assumed. Coverage should be monitored as data and operating conditions change.
+These are empirical holdout measurements. Serial dependence and distribution shift mean classical exchangeability-based coverage guarantees should not be assumed.
 
----
+Detailed protocols and tables: [Empirical evaluation results](docs/empirical_evaluation_results.md), [evaluation protocol](docs/empirical_evaluation_protocol.md), and [model card](docs/model_card.md).
 
-## 8. Inventory optimization and decision simulation
+## Inventory assumptions and policy
 
-Forecasts are translated into periodic-review replenishment targets. The decision layer considers demand during the protection period, which is based on lead time plus review period.
+The inventory layer translates demand forecasts into a periodic-review target over the **protection period = lead time + review period**. It is a simulation and planning demonstration, not a connection to a retailer's ERP or actual procurement process.
 
-The simulation compares a historical-demand policy with a forecast-informed policy using explicit assumptions for:
+### Configured economic assumptions
 
-- Holding cost.
-- Ordering cost.
-- Stockout penalty.
-- Lead time and review period.
-- Target service level.
-- Minimum order quantity and maximum order quantity.
+Values below are explicitly configurable in `configs/inventory_config.yaml`; they are illustrative assumptions, not retailer-supplied economics.
 
-The inventory simulator is a controlled experiment, not a production retailer replenishment system. It uses deterministic lead times and does not represent actual purchase orders, reserved inventory, supplier uncertainty or verified warehouse-to-store routes.
+| Parameter | Configured value | Interpretation |
+|---|---:|---|
+| Holding cost | 0.05 per unit per day | Carrying cost charged to each unit held per simulated day |
+| Ordering cost | 5.00 per order | Fixed cost incurred when a replenishment order is placed |
+| Stockout penalty | 2.00 per unmet unit | Proxy penalty for each unit of unmet demand |
+| Baseline service target | 80% | Historical-demand comparator |
+| Default service target | 90% | Default planning target |
+| Baseline lead time | 7 days | Deterministic replenishment delay |
+| Default lead time | 7 days | Default planning delay |
+| Review period | 7 days | Period between inventory reviews |
+| Demand history | 365 days | Historical window for live normal-approximation policy |
+| Minimum order quantity | 5 units | Simulation constraint |
+| Maximum order quantity | 500 units | Simulation cap |
 
-### Forecast-driven inventory result
+The units of the cost parameters are abstract model units because the public M5 dataset does not provide retailer-approved carrying, order-processing or lost-sales costs. They should not be presented as USD or any other currency.
 
-Final 28-day test period; mean per-series simulation metrics across eligible item-store series.
+### Replenishment policy
+
+- **Historical baseline:** estimates mean and standard deviation from up to 365 days of historical demand, then calculates a normal-approximation safety stock using the configured service level and protection period.
+- **Forecast-driven policy:** sums predicted demand over lead time plus review period and adds an empirical block-conformal residual quantile as safety stock.
+- **Policy selection:** evaluates service-level and review-period candidates on a validation selection window; freezes the selected policy before the final test simulation.
+- **Order constraints:** configured MOQ/maximum quantity constrain simulated replenishment. The live demo's suggested order is also capped at 500 units.
+- **Inventory position simplification:** the live calculator uses on-hand stock as a proxy for inventory position because open purchase orders and reserved stock are not available.
+
+The cost simulator charges holding cost per unit-day, a fixed cost per order and a penalty per unmet demand unit. It compares a historical-demand policy with a forecast-driven policy on the same held-out demand sequence.
+
+### Inventory simulation result (200-series track)
+
+Mean per-series metrics over the final 28-day test simulation:
 
 | Metric | Historical baseline | Forecast-driven |
 |---|---:|---:|
@@ -292,256 +264,68 @@ Final 28-day test period; mean per-series simulation metrics across eligible ite
 | Average ending inventory | 122.95 | 90.12 |
 | Fill rate | 93.88% | 94.21% |
 
-Under the configured assumptions, the forecast-driven policy produced:
+Under the configured assumptions, the forecast-driven policy had **17.62% lower simulated cost**, **20.05% fewer stockout units**, **26.70% lower average ending inventory**, and a **0.32 percentage-point higher fill rate**. These are simulation outputs—not realized savings, measured profit, or a forecast of retailer financial performance.
 
-- **17.62% lower simulated total cost**
-- **20.05% fewer stockout units**
-- **26.70% lower average ending inventory**
-- **0.32 percentage-point higher fill rate**
+Sensitivity experiments vary lead time, service target and cost multipliers. For example, at a 7-day lead time, raising the target from 80% to 95% increased base-case simulated cost by 2.28%, reduced stockout units by 13.89%, and improved fill rate by 1.53 percentage points. Under a 2.5× stockout penalty, the same change reduced simulated cost by 4.32%.
 
-These are simulated outcomes under the repository's cost assumptions. They are **not** realized retailer savings or a financial forecast.
+Full details: [Inventory methodology](docs/inventory_methodology.md), [business assumptions](docs/business_assumptions.md), and [decision brief](docs/DECISION_BRIEF.md).
 
-### Sensitivity analysis
+## Limitations and responsible interpretation
 
-The inventory sensitivity experiment evaluates:
-
-- Lead times: 1, 3, 5, 7, 10, 14 and 21 days.
-- Service-level targets: 80%, 85%, 90%, 95% and 97%.
-- Cost scenarios: base case, lower/higher stockout penalty, higher holding cost and higher ordering cost.
-- A deterministic 30-series sample stratified across demand-volume ranks.
-
-At a 7-day lead time, moving from an 80% to 95% service target increased base-case simulated cost by 2.28%, reduced stockout units by 13.89%, and improved fill rate by 1.53 percentage points. Under a 2.5× stockout-penalty scenario, the same policy reduced simulated cost by 4.32%. The preferred service target therefore depends on the relative cost of stockouts and excess inventory.
-
-See [inventory methodology](docs/inventory_methodology.md) and [business assumptions](docs/business_assumptions.md).
-
----
-
-## 9. Product architecture
-
-The project separates data science, API serving and interactive analytics.
-
-| Layer | Technology | Responsibility |
-|---|---|---|
-| Data processing | Python, pandas, Parquet | Ingestion, validation, cleaning and feature creation |
-| Modelling | XGBoost, LightGBM, scikit-learn | Demand forecasting and baseline comparisons |
-| Statistical evaluation | NumPy, pandas, bootstrap procedures | Rolling-origin evaluation, uncertainty and sensitivity |
-| API | FastAPI | Forecast, EDA, health and inventory endpoints |
-| User interface | Streamlit | Interactive EDA, forecast, inventory and scenario workspaces |
-| Automation | GitHub Actions | Tests, data processing and repeatable experiments |
-| Source storage | Private Supabase Storage | Original compressed M5 archive |
-
-### Interactive dashboard
-
-The Streamlit application is organized around decision workflows:
-
-- **Overview:** executive demand and inventory indicators.
-- **Full EDA:** descriptive statistics, demand quantiles, intermittency, trend, seasonality, distributions and lag autocorrelation.
-- **Demand Forecast:** model-driven demand projections and uncertainty views.
-- **Inventory Control:** replenishment policy and order quantity analysis.
-- **Network Intelligence:** state-level demand aggregation and explicitly labelled illustrative distribution-centre scenarios.
-- **Business Impact:** service and cost outcomes under stated assumptions.
-- **Scenario Studio:** interactive what-if analysis.
-
-### API
-
-The FastAPI service provides endpoints for health checks, EDA, forecasting and inventory decision support. Interactive endpoint documentation is available at the hosted API docs link above.
-
----
-
-## 10. Reproducibility
-
-### Run locally
-
-Python 3.11 is used in the GitHub Actions data-processing workflow.
-
-Install dependencies:
-
-```bash
-python -m pip install -r requirements-dev.txt
-```
-
-Place the three required M5 source CSVs in `data/raw/`:
-
-- `sales_train_evaluation.csv` (preferred) or `sales_train_validation.csv`
-- `calendar.csv`
-- `sell_prices.csv`
-
-Run the full-population EDA and modelling pipeline:
-
-```bash
-python -m scripts.run_full_population_eda
-python -m scripts.prepare_data
-python -m scripts.build_features
-```
-
-Run model and decision experiments after the processed modelling panel is created:
-
-```bash
-python -m scripts.train_models
-python -m scripts.estimate_uncertainty
-python -m scripts.run_inventory_simulation
-python -m scripts.run_rolling_backtest
-python -m scripts.run_advanced_evaluation
-python -m scripts.run_forecast_driven_inventory
-python -m scripts.run_inventory_sensitivity
-python -m scripts.build_business_impact
-pytest -q
-```
-
-### Rebuild from private Supabase source
-
-Configure these repository secrets under **Settings → Secrets and variables → Actions**:
-
-- `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY` (or the supported legacy `SUPABASE_SERVICE_ROLE_KEY`)
-
-Optional: `M5_ZIP_PATH` if the private bucket contains more than one ZIP. The bucket defaults to `m5-raw-data`.
-
-Run the [process M5 source data workflow](.github/workflows/process-m5-source-data.yml) manually from the Actions tab. The workflow downloads the private archive, performs full-population EDA, rebuilds the selected modelling Parquet files, removes temporary raw inputs, and commits only processed outputs. Do not place credentials in source files or commit the raw archive.
-
-### Tests and continuous integration
-
-The repository includes automated tests for data/forecasting components and a GitHub Actions test workflow. The data-processing workflow and empirical-evaluation workflow are separately runnable so data ingestion, model evaluation and code tests can be inspected independently.
-
----
-
-## 11. Repository map
-
-```text
-.
-├── api/                         # FastAPI application and route handlers
-├── app/                         # Streamlit dashboard
-├── configs/                     # Data, model and inventory configuration
-├── data/
-│   ├── interim/                 # Cleaned selected-series panel and validation
-│   └── processed/               # Model-ready feature panel
-├── docs/                        # Statistical, inventory and data-policy docs
-├── reports/
-│   ├── eda/full_data/            # Full-population EDA outputs
-│   ├── figures/                  # Experiment figures
-│   └── tables/                   # Evaluation tables
-├── scripts/                     # Reproducible analysis and experiment entrypoints
-├── src/
-│   ├── data/                     # Loaders, validation and cleaning
-│   ├── features/                 # Feature engineering
-│   ├── forecasting/              # Forecasting and baseline logic
-│   ├── inventory/                # Replenishment and simulation
-│   └── utils/                    # Configuration and shared utilities
-└── tests/                        # Automated tests
-```
-
----
-
-## 12. Limitations and responsible interpretation
-
-- Full-population descriptive analysis covers 30,490 series, but the main forecasting and inventory experiments cover 200 selected series.
-- Results on the selected high-volume panel do not establish performance on the complete M5 population.
-- WAPE is an aggregate metric and can hide weak performance on low-volume or intermittent series.
-- Rolling one-step-ahead evaluation is not equivalent to a fixed-origin multi-week forecast.
-- Conformal coverage is empirical on a holdout, not a guarantee under serial dependence or distribution shift.
-- Inventory costs are assumptions, not retailer-provided or realized economics.
-- The inventory sensitivity analysis uses 30 series; it is not a complete assortment-wide policy optimization.
-- Lead times are deterministic. Stochastic supplier delays and replenishment disruptions are future extensions.
-- M5 includes store/state identifiers but not verified store coordinates, warehouse locations, or actual store-to-warehouse assignments. Map layers using illustrative hubs are scenario visualizations, not observed logistics networks.
-- Future prices, promotions and event information are not always known at forecast time. Live recursive forecasts use conservative assumptions for unavailable future inputs.
-- The live inventory position does not currently reconcile open purchase orders and reserved stock.
-
----
-
-## 13. Further research
-
-Potential next steps include:
-
-- Evaluate all 30,490 series with scalable distributed feature processing and segment-aware model selection.
-- Add hierarchical forecasting and coherent aggregation across item, department, category, store and state levels.
-- Compare global models with local and intermittent-demand specialists by demand segment.
-- Add probabilistic forecasting and rolling coverage monitoring under temporal dependence.
-- Extend the inventory simulator with stochastic lead times, order pipelines, service constraints and realistic review calendars.
-- Evaluate policy robustness under demand shocks, promotions and price changes.
-- Add operational monitoring for data drift, forecast bias, service levels and realized replenishment outcomes.
-
----
-
-## 14. References
-
-- Makridakis, S., Spiliotis, E., & Assimakopoulos, V. — M5 accuracy forecasting competition and dataset.
-- [M5 Forecasting — Accuracy on Kaggle](https://www.kaggle.com/competitions/m5-forecasting-accuracy)
-- [XGBoost documentation](https://xgboost.readthedocs.io/)
-- [LightGBM documentation](https://lightgbm.readthedocs.io/)
-- [FastAPI documentation](https://fastapi.tiangolo.com/)
-- [Streamlit documentation](https://docs.streamlit.io/)
-
----
-
-## Project status
-
-The GitHub code, data-processing workflow and automated test workflow have completed successfully. The full-population EDA job processed all **30,490 series × 1,941 daily columns** from the original M5 evaluation matrix. The source-processing run is available [here](https://github.com/Harshithpatali/retail-demand-inventory-optimization/actions/runs/43025180207).
-
-**Important:** EDA generation succeeded in the workflow. The workflow's commit step initially reported a clean working tree, so the EDA report files were not yet confirmed in GitHub at that run. A follow-up workflow change explicitly stages those outputs; check the latest Actions run before relying on the report links.
-
- 
-## Evaluation snapshot and business interpretation
-
-The current four-origin refit benchmark covers 200 selected item-store series and 22,400 rolling one-step observations. XGBoost achieved WAPE 29.11%, compared with 34.49% for the 7-day moving average, 38.62% for naive and 40.29% for seasonal naive. On the final 28-day inventory simulation, the forecast-driven policy reduced simulated cost by 17.62%, reduced stockout units by 20.05%, reduced average ending inventory by 26.70%, and improved fill rate by 0.32 percentage points versus the historical-demand policy.
-
-These are historical benchmark and simulation results under stated cost assumptions—not realized retailer savings. The tested panel is a deterministic subset of 200 series, not all 30,490 M5 series. Read [Empirical Evaluation Results](docs/empirical_evaluation_results.md), [Decision Brief](docs/DECISION_BRIEF.md) and [Model Card](docs/model_card.md) together before quoting results.
+1. **Different population scopes:** full-population EDA/forecasting covers 30,490 series; detailed rolling-origin and inventory experiments cover 200 selected series.
+2. **High full-population forecast error:** 72.50% test WAPE is an improvement over baselines, not a highly accurate forecast.
+3. **Aggregate metrics conceal heterogeneity:** WAPE can obscure poor low-volume and intermittent SKU performance.
+4. **Observed sales are not true unconstrained demand:** stockouts and lost sales are not identified in M5.
+5. **Future covariates are incomplete:** future prices, events and SNAP effects are not known to the full-population forecast.
+6. **Inventory costs are assumptions:** no retailer cost data, margins or finance-approved penalties are available.
+7. **Simplified operations:** deterministic lead times; no supplier reliability, order pipeline, reserved stock, pack-size rules, capacity constraints or actual purchase orders.
+8. **Short horizon:** inventory results use a 28-day test simulation; long-run policy effects may differ.
+9. **No causal claim:** the simulation compares policies under a controlled historical replay; it is not a randomized intervention or a live pilot.
+10. **Deployment caveat:** hosted services may sleep or be temporarily unavailable; check the live links and latest Actions status before a demonstration.
 
 ## Reproducibility
 
+The source archive is private and must be obtained through the documented Supabase Storage workflow. Never commit credentials or the raw archive.
+
+Install development dependencies:
+
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 pytest -q
-python -m scripts.train_models
-python -m scripts.estimate_uncertainty
-python -m scripts.run_forecast_driven_inventory
 ```
 
-The complete M5 source archive is obtained through the documented private Supabase Storage workflow; credentials belong in GitHub Actions secrets, never in source control. See [Data README](data/README.md) and the workflow documentation.
+For the full pipeline, configure `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (or the supported legacy service-role key) as GitHub Actions secrets, then manually run [process-m5-source-data](.github/workflows/process-m5-source-data.yml). The workflow handles source retrieval, processing, validation and publication. See [data README](data/README.md).
 
+## Repository map
 
-## Reproducible experiment report
+```text
+api/                  FastAPI routes and services
+configs/              Data, model and inventory configuration
+dashboard/            Streamlit application
+docs/                 Architecture, methodology, assumptions and reports
+docs/screenshots/     Dashboard screenshots
+reports/              EDA, forecasting and simulation outputs
+scripts/              Reproducible pipeline and experiment entrypoints
+src/data/             Loading, validation and cleaning
+src/features/         Feature engineering
+src/forecasting/      Forecast and baseline logic
+src/inventory/        Replenishment policy logic
+src/simulation/       Inventory simulation and metrics
+tests/                Automated tests
+```
 
-See [Portfolio Experiment Report](docs/PORTFOLIO_EXPERIMENT_REPORT.md) for the rolling-origin forecast comparison, paired series-cluster uncertainty, intermittent-demand comparison, inventory-policy trade-offs and explicit scope limitations. The report reconciles to the later detailed empirical evaluation; an earlier business-impact CSV is flagged as a separate run until its provenance is reconciled.
+## Further research
 
+- Improve full-population accuracy by evaluating segment-specific and intermittent-demand specialist models.
+- Add probabilistic forecasting and rolling interval-coverage monitoring.
+- Incorporate future price/promotion/event features when they are genuinely available at forecast time.
+- Extend inventory simulation with stochastic lead times, supplier fill rates, pack sizes, capacity and open-order pipelines.
+- Run a prospective shadow evaluation using retailer data and finance-approved cost inputs.
 
-## Full-population analytics from Cloudflare R2
+## References
 
-The dashboard now has a separate **Full Population (R2)** workspace. It reads the
-full-population EDA artifacts from the private `m5-retail-analytics` R2 bucket
-through FastAPI endpoints under `/population`:
-
-- `GET /population/status` — checks the R2 manifest and required EDA objects.
-- `GET /population/overview` — full-population headline metrics.
-- `GET /population/daily` — daily demand across the complete M5 population.
-- `GET /population/segments/{dimension}` — state, store, category or department summaries.
-- `GET /population/series` — paginated item-store metrics with optional filters.
-
-This design reads compact precomputed EDA outputs from R2; it does **not** load
-the approximately 59-million-cell daily long panel into Supabase or scan the
-full source matrix on each dashboard interaction. Supabase remains the SQL
-warehouse for the existing 200-series curated panel, model evaluations,
-conformal diagnostics and inventory sensitivity.
-
-### Render API environment
-
-Add the following environment variables to the existing Render API service
-(the same service that hosts `/health` and `/docs`):
-
-- `R2_ACCOUNT_ID`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_BUCKET=m5-retail-analytics`
-
-Use the same account ID and R2 S3 API credentials created for GitHub Actions.
-Keep the bucket private and scope the token to Object Read access for this API
-service if using a separate read-only token. Do not put R2 credentials in
-Streamlit Cloud; the dashboard talks to FastAPI, not directly to R2.
-
-After the Render service redeploys, verify:
-- `/population/status` reports `available: true`.
-- `/population/overview` reports the full series count and source date range.
-- `/docs` lists the `full-population R2 analytics` endpoints.
-
-The Full Population workspace is descriptive analytics for the full M5
-population. Existing forecasting, conformal interval evaluation and inventory
-simulation remain explicitly scoped to the selected 200-series modelling panel.
+- [M5 Forecasting — Accuracy competition](https://www.kaggle.com/competitions/m5-forecasting-accuracy)
+- [LightGBM documentation](https://lightgbm.readthedocs.io/)
+- [XGBoost documentation](https://xgboost.readthedocs.io/)
+- [FastAPI documentation](https://fastapi.tiangolo.com/)
+- [Streamlit documentation](https://docs.streamlit.io/)
