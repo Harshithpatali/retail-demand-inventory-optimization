@@ -70,3 +70,40 @@ department aggregates, price summaries, a JSON headline report, and plots under
 Raw source files in `data/raw/` are ignored by Git and are never committed by
 the processing workflow. The default experiment selects up to 20 items per store
 and 200 total item-store series; see `configs/data_config.yaml`.
+
+
+## Cloudflare R2 full-data lake
+
+The GitHub Actions source-processing workflow also publishes the full source and
+derived data to the private Cloudflare R2 bucket `m5-retail-analytics`:
+
+- `raw/m5-forecasting-accuracy.zip`: original ZIP, preserved byte-for-byte.
+- `raw/extracted/*.parquet`: Parquet conversions of the selected full sales
+  matrix, calendar and sell-price source tables.
+- `processed/interim/cleaned_sales.parquet` and
+  `processed/processed/forecast_features.parquet`: curated modelling panels.
+- `processed/full_population_eda/`: full-population EDA tables, report and figures.
+- `metadata/manifest.json`: object keys, row counts, sizes and SHA-256 checksums.
+
+Parquet files use Zstandard compression. The sales matrix is converted in row
+chunks to avoid materializing the complete wide table in memory. The source ZIP
+is retained alongside extracted Parquet for exact reproducibility.
+
+### Required GitHub Actions secrets for R2
+
+Create an R2 S3 API token with **Object Read & Write** access scoped only to
+`m5-retail-analytics`, then add these repository secrets:
+
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+
+Do not commit or paste these credentials into source files or chat. After adding
+the secrets, run **Actions → process-m5-source-data → Run workflow**. The job
+downloads the original archive from private Supabase Storage, uploads the ZIP
+and Parquet datasets to R2, and continues publishing the selected analytical
+panel to Supabase PostgreSQL. Supabase SQL analytics tables and views remain
+the query layer; R2 is the full-file data lake.
+
+The R2 upload step is not complete until the workflow succeeds and
+`metadata/manifest.json` is present in the bucket.
