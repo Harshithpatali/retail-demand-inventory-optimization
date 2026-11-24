@@ -10,6 +10,7 @@ on:
       - scripts/prepare_data.py
       - scripts/build_features.py
       - scripts/load_retail_warehouse.py
+      - scripts/upload_m5_to_r2.py
       - .github/workflows/process-m5-source-data.yml
 
 permissions:
@@ -48,6 +49,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_BUCKET: m5-raw-data
           M5_ZIP_PATH: ${{ secrets.M5_ZIP_PATH }}
+          KEEP_M5_ARCHIVE: "1"
         run: python -m scripts.download_m5_from_supabase
 
       - name: Run full-population EDA on original M5 sales matrix
@@ -87,6 +89,18 @@ jobs:
           print("Validation report keys:", sorted(report))
           print("Feature date range:", features.date.min(), "to", features.date.max())
           PY
+
+      - name: Install Cloudflare R2 uploader
+        run: python -m pip install boto3==1.35.90
+
+      - name: Upload original archive, extracted source and processed Parquet to Cloudflare R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: m5-retail-analytics
+          R2_REGION: auto
+        run: python -m scripts.upload_m5_to_r2
 
       - name: Publish compact analytical panel to Supabase PostgreSQL
         env:
