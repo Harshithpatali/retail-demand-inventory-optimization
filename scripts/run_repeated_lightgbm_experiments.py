@@ -107,7 +107,8 @@ def run(examples, levels_path, train_origins, val_origin, test_origin):
                      "selection_score":score})
         print(f"run={run_no:02d}/20 seed={seed} WAPE={m['WAPE']:.5f} bias={m['bias']:.5f}", flush=True)
         if score < best_score:
-            if best is not None: del best[0]
+            if best is not None:
+                del best
             best_score, best = score, (model, run_no, seed, m)
         else: del model
         del sample
