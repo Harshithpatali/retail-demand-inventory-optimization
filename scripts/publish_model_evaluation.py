@@ -43,7 +43,7 @@ def main() -> None:
         model_rows.append((
             evaluation_run, str(row["model"]), "all", int(row["fold"]),
             int(row["test_rows"]), float(row["MAE"]), float(row["RMSE"]),
-            float(row["WAPE"]), None, "{}"
+            float(row["WAPE"]), (None if pd.isna(row.get("bias")) else float(row["bias"])), "{}"
         ))
     for row in segment.to_dict("records"):
         model_rows.append((
