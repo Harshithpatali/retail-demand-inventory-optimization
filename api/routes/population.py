@@ -21,3 +21,10 @@ def series(limit:int=Query(default=100,ge=1,le=500),offset:int=Query(default=0,g
     return _call(lambda:_service.series(limit,offset,store_id,state_id,cat_id,dept_id,sort_by))
 @router.get("/daily")
 def daily(): return _call(_service.daily)
+
+@router.get("/forecast/status")
+def forecast_status(): return _call(_service.forecast_status)
+@router.get("/forecast/metrics")
+def forecast_metrics(): return _call(_service.forecast_metrics)
+@router.get("/forecast/sample-comparison")
+def forecast_sample_comparison(): return _call(_service.forecast_sample_comparison)
